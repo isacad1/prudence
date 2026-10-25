@@ -448,7 +448,7 @@ const xl = {
     const head = (label) => ({ userEnteredValue: { stringValue: label }, userEnteredFormat: { textFormat: { bold: true, foregroundColor: { red: 0.153, green: 0.2, blue: 0.31 } }, backgroundColor: { red: 0.878, green: 0.918, blue: 0.984 } } });
     const sheets = [{ properties: { title: "Read me", index: 0 }, data: [{ rowData: README_ROWS.map((r, i) => ({ values: [{ userEnteredValue: { stringValue: r[0] }, userEnteredFormat: { textFormat: { bold: i === 0 || r[0] === "Safe to do" || r[0] === "Please don't", fontSize: i === 0 ? 14 : 10 } } }] })), columnMetadata: [{ pixelSize: 720 }] }] }];
     Object.values(SCHEMA).forEach((spec, i) => sheets.push({ properties: { title: spec.sheet, index: i + 1, gridProperties: { frozenRowCount: 1, columnCount: Math.max(spec.cols.length, 2) } }, data: [{ rowData: [{ values: spec.cols.map((c) => head(c[1])) }], columnMetadata: spec.cols.map((c) => ({ pixelSize: c[0] === "note" || c[0] === "value" ? 260 : c[2] === "text" ? 150 : 120 })) }] }));
-    const m = await api("POST", SHEETS + "?fields=spreadsheetId,sheets.properties", { properties: { title: CFG.sheetName, locale: "en_PH", timeZone: "Asia/Manila" }, sheets });
+    const m = await api("POST", SHEETS + "?fields=spreadsheetId,sheets.properties", { properties: { title: CFG.sheetName, locale: "en_US", timeZone: "Asia/Manila" }, sheets });
     const ids = {}; (m.sheets || []).forEach((s) => (ids[s.properties.title] = s.properties.sheetId));
     const reqs = [];
     Object.values(SCHEMA).forEach((spec) => spec.cols.forEach((c, j) => {
@@ -770,7 +770,9 @@ function niceScale(max, ticks) {
 }
 function barChart(labels, series, opt) {
   opt = opt || {}; const narrow = window.innerWidth < 560; const W = narrow ? 380 : 640, H = (opt.h || 220) * (narrow ? 0.8 : 1), L = 54, R = 8, T = 14, B = 28;
-  const max = Math.max(1, ...series.flatMap((s) => s.values)); const { step, top } = niceScale(max, 4);
+  const rawMax = Math.max(0, ...series.flatMap((s) => s.values));
+  if (!(rawMax > 0)) return `<div class="empty">${esc(opt.empty || "Nothing logged yet. This fills in as you add entries.")}</div>`;
+  const max = rawMax; const { step, top } = niceScale(max, 4);
   const iw = W - L - R, ih = H - T - B, y = (v) => T + ih - (v / top) * ih;
   const gw = iw / labels.length, n = series.length, bw = Math.min(28, (gw * 0.66) / n);
   let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(opt.label || "Chart")}">`;
@@ -788,7 +790,9 @@ function barChart(labels, series, opt) {
 function lineChart(points, opt) {
   opt = opt || {}; const narrow = window.innerWidth < 560; const W = narrow ? 380 : 640, H = (opt.h || 200) * (narrow ? 0.85 : 1), L = 54, R = 14, T = 14, B = 28;
   if (points.length < 2) return `<div class="empty">Not enough history yet.</div>`;
-  const max = Math.max(...points.map((p) => p.v)); const { step, top } = niceScale(max, 4);
+  const max = Math.max(...points.map((p) => p.v));
+  if (!(max > 0)) return `<div class="empty">${esc(opt.empty || "No debt recorded.")}</div>`;
+  const { step, top } = niceScale(max, 4);
   const iw = W - L - R, ih = H - T - B, y = (v) => T + ih - (v / top) * ih, x = (i) => L + (iw * i) / (points.length - 1);
   let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(opt.label || "Chart")}">`;
   for (let v = 0; v <= top + 1e-6; v += step) s += `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)" ${v ? 'stroke-dasharray="3 4"' : ""}/><text x="${L - 8}" y="${y(v) + 4}" text-anchor="end" font-size="11" fill="var(--muted)" font-family="Google Sans Flex, Helvetica Neue, Helvetica, Arial, sans-serif">${esc(MK.format(v))}</text>`;
