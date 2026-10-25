@@ -1,0 +1,16 @@
+{
+  "name": "Prudence — Personal and Home Finance",
+  "short_name": "Prudence",
+  "description": "Daily spending, bills by cutoff, loans, salary and utilities, saved to your Google Sheet.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#eceef5",
+  "theme_color": "#eceef5",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}
