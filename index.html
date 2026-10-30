@@ -248,6 +248,11 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 0.86rem; min-widt
 button.lrow { cursor: pointer; } button.lrow:hover { background: var(--surface-2); }
 .lrow.lhead { position: sticky; top: 0; background: var(--surface); font-size: 0.7rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); border-bottom: 1px solid var(--line); }
 .lrow .ld { color: var(--muted); white-space: nowrap; } .lrow .lt { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .lrow .la, .lrow .lb { text-align: right; white-space: nowrap; }
+.wknav { display: flex; align-items: center; gap: 4px; } .wknav .btn { padding: 2px 10px; font-size: 1rem; } .wknav .btn[disabled] { opacity: .35; }
+.vizsum { margin: 0 0 8px; font-size: 0.9rem; color: var(--muted); } .vizsum b { color: var(--ink); font-weight: 600; }
+.tm-cell:hover rect { fill-opacity: 1; }
+.chipx { border: 1px solid var(--line-strong); background: var(--accent-soft); color: var(--ink); border-radius: 999px; padding: 4px 12px; font: inherit; font-size: 0.82rem; cursor: pointer; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .bout { margin-top: 8px; } .bout img { width: 100%; max-width: 420px; border: 1px solid var(--line); border-radius: 10px; display: block; margin-bottom: 6px; }
 .vlist { display: flex; flex-direction: column; gap: 18px; }
 .vcard + .vcard { border-top: 1px dashed var(--line); padding-top: 16px; }
@@ -1027,7 +1032,7 @@ function tOverview(v) {
     const from = S.month + "-" + (c === "A" ? "01" : "16"), to = S.month + "-" + (c === "A" ? "15" : pad(ld));
     const inW = v.txns.filter((t) => t.date >= from && t.date <= to);
     const cin = r2(sum(inW.filter((t) => t.type === "income"), (t) => +t.amount));
-    const out = r2(sum(inW.filter((t) => t.type === "expense" || (t.type === "transfer" && t.link)), (t) => +t.amount));
+    const out = r2(sum(inW.filter((t) => t.type === "expense" || (t.type === "transfer" && t.link && t.account)), (t) => +t.amount));
     const due = r2(sum(items.filter((i) => i.cycle === c && !i.paid), (i) => Number(i.amount) || 0));
     const salaries = v.txns.filter((t) => t.category === "Salary" && t.type === "income").sort((a, b) => b.date.localeCompare(a.date));
     const lastPay = salaries.find((t) => t.details && t.details.cut === c) || salaries[0];
@@ -1142,7 +1147,9 @@ function tDaily(v) {
   const monthTot = r2(sum(inM, (t) => +t.amount));
   const cats = v.settings.categories && v.settings.categories.length ? v.settings.categories : DEFAULT_CATS;
   if (!cats.includes(S.dayCat)) S.dayCat = cats[0];
-  const groups = {}; inM.forEach((t) => (groups[t.date] = groups[t.date] || []).push(t));
+  if (S.dayFilter && !inM.some((t) => (t.category || "Other") === S.dayFilter)) S.dayFilter = null;
+  const shown = S.dayFilter ? inM.filter((t) => (t.category || "Other") === S.dayFilter) : inM;
+  const groups = {}; shown.forEach((t) => (groups[t.date] = groups[t.date] || []).push(t));
   const defAcct = (v.settings.accounts.find((a) => a.type === "cash") || v.settings.accounts.find((a) => a.type === "ewallet") || v.settings.accounts[0] || {}).id;
   return `
   <section class="panel kpis" aria-label="Daily totals">
@@ -1151,10 +1158,11 @@ function tDaily(v) {
     <div class="kpi"><span class="eyebrow">${esc(ymShort(S.month))} so far</span><span class="v">${fmt(monthTot)}</span><span class="s">${inM.length} entries</span></div>
     <div class="kpi"><span class="eyebrow">Daily average</span><span class="v">${fmt(monthTot / Math.max(1, S.month === ymOf(today) ? Number(today.slice(8)) : lastDay(S.month)))}</span><span class="s">Excludes bills &amp; loans</span></div>
   </section>
+  ${dailyCharts(v)}
   <div class="cols">
-    <section class="panel">
-      <div class="phead"><h2>Spending log</h2><span class="eyebrow">${esc(ymName(S.month))}</span></div>
-      ${inM.length ? Object.keys(groups).sort().reverse().map((d) => `<div class="day-head"><span>${esc(dLabel(d))}</span><span class="num">${fmt(sum(groups[d], (t) => +t.amount))}</span></div>` + groups[d].map((t) => `<button type="button" class="row" data-act="edittx" data-id="${esc(t.id)}"><span class="bar6" style="background:var(--expense)"></span><span style="min-width:0"><span class="t" style="display:block">${esc(t.category)}</span><span class="m" style="display:block">${esc([t.note, acctName(v, t.account)].filter(Boolean).join(" · "))}</span></span><span class="r"><span class="amt">${fmt(t.amount)}</span></span></button>`).join("")).join("") : `<div class="empty"><strong>Nothing logged for ${esc(ymName(S.month))}</strong>Use the quick add to record what you spend each day.</div>`}
+    <section class="panel" id="spendLog">
+      <div class="phead"><h2>Spending log</h2>${S.dayFilter ? `<button type="button" class="chipx" data-act="dayclear">${esc(S.dayFilter)} · ${fmt(sum(shown, (t) => +t.amount))} <span aria-hidden="true">✕</span><span class="sr-only"> Show all</span></button>` : `<span class="eyebrow">${esc(ymName(S.month))}</span>`}</div>
+      ${shown.length ? Object.keys(groups).sort().reverse().map((d) => `<div class="day-head"><span>${esc(dLabel(d))}</span><span class="num">${fmt(sum(groups[d], (t) => +t.amount))}</span></div>` + groups[d].map((t) => `<button type="button" class="row" data-act="edittx" data-id="${esc(t.id)}"><span class="bar6" style="background:var(--expense)"></span><span style="min-width:0"><span class="t" style="display:block">${esc(t.category)}</span><span class="m" style="display:block">${esc([t.note, acctName(v, t.account)].filter(Boolean).join(" · "))}</span></span><span class="r"><span class="amt">${fmt(t.amount)}</span></span></button>`).join("")).join("") : `<div class="empty"><strong>Nothing logged for ${esc(ymName(S.month))}</strong>Use the quick add to record what you spend each day.</div>`}
     </section>
     <section class="panel">
       <div class="phead"><h2>Quick add</h2><button type="button" class="btn small ghost" data-act="transfer">Transfer between accounts</button></div>
@@ -1585,16 +1593,33 @@ function sheetPerson(v, p) {
       const np = Object.assign({}, p, { id: isNew ? newId("p") : p.id, name, start, startDate: val("oDate") || todayStr(), entries: p.entries || [] });
       if (await act(() => store.put("people", np), isNew ? "Person added" : "Saved")) closeSheet();
     }, isNew ? "" : delBtn);
-  sheetDelete = isNew ? null : async () => { if (await act(() => store.del("people", p.id), "Removed")) closeSheet(); };
+  sheetDelete = isNew ? null : async () => { const ids = new Set((p.entries || []).map((e) => e.id)); const txs = v.txns.filter((t) => t.link && t.link.kind === "owed" && ids.has(t.link.id)); if (await act(async () => { for (const t of txs) await store.del("txns", t.id); await store.del("people", p.id); }, "Removed")) closeSheet(); };
+}
+/* money lent or paid back can move through one of your accounts; it isn't spending or income */
+const owedTx = (v, e) => v.txns.find((t) => t.link && t.link.kind === "owed" && t.link.id === e.id);
+function owedAcctDefault(v, k) {
+  const last = v.txns.filter((t) => t.link && t.link.kind === "owed" && (k === "lend" ? t.account : t.to)).sort((x, y) => (y.createdAt || 0) - (x.createdAt || 0))[0];
+  const id = last ? (k === "lend" ? last.account : last.to) : "";
+  return v.settings.accounts.some((a) => a.id === id) ? id : "";
+}
+const owedAcctField = (v, k, sel) => fld("peAcct", k === "lend" ? "Sent from" : "Received in", `<select id="peAcct"><option value="">Don't record in an account</option>${acctOpts(v, sel, (a) => a.type !== "savings" || a.id === sel)}</select>`);
+async function syncOwedTx(v, p, e, acct) {
+  const t = owedTx(v, e);
+  if (!acct) { if (t) await store.del("txns", t.id); return; }
+  await store.put("txns", { id: t ? t.id : newId("t"), date: e.d, type: "transfer", account: e.k === "lend" ? acct : "", to: e.k === "lend" ? "" : acct, amount: Number(e.a) || 0, category: e.k === "lend" ? "Lent" : "Paid back", note: (e.k === "lend" ? "Lent to " : "Paid back by ") + p.name + (e.n ? " · " + e.n : ""), link: { kind: "owed", id: e.id }, createdAt: t ? t.createdAt || Date.now() : Date.now() });
 }
 function sheetPEntry(v, p, k) {
   openSheet((k === "lend" ? "Lent to " : "Paid back by ") + p.name, `
     <div class="grid2">${fld("peAmt", "Amount", money("peAmt", ""))}${fld("peDate", "Date", inp("peDate", todayStr(), 'type="date"'))}</div>
-    ${fld("peNote", "Note", inp("peNote", "", 'maxlength="80" placeholder="' + (k === "lend" ? "e.g. Dinner at Shakey's" : "e.g. GCash transfer") + '"'))}`,
+    ${owedAcctField(v, k, owedAcctDefault(v, k))}
+    ${fld("peNote", "Note", inp("peNote", "", 'maxlength="80" placeholder="' + (k === "lend" ? "e.g. Dinner at Shakey's" : "e.g. GCash transfer") + '"'))}
+    <p class="note">${k === "lend" ? "Choosing an account takes the amount out of its balance. It isn't counted as spending." : "Choosing an account adds the amount to its balance. It isn't counted as income."}</p>`,
     async () => {
       const a = num(val("peAmt")); if (!(a > 0)) return shErr("Enter an amount greater than zero.");
-      const np = Object.assign({}, p, { entries: (p.entries || []).concat([{ id: newId("e"), d: val("peDate"), k, a, n: val("peNote").trim() }]) });
-      if (await act(() => store.put("people", np), k === "lend" ? "Added to " + p.name + "'s balance" : "Payment recorded")) { if (S.fromLedger) { S.fromLedger = false; sheetLedger(V(), V().people.find((x) => x.id === p.id) || np); } else closeSheet(); }
+      const e = { id: newId("e"), d: val("peDate") || todayStr(), k, a, n: val("peNote").trim() };
+      const np = Object.assign({}, p, { entries: (p.entries || []).concat([e]) });
+      const acct = val("peAcct");
+      if (await act(async () => { await store.put("people", np); await syncOwedTx(v, np, e, acct); }, (k === "lend" ? "Added to " + p.name + "'s balance" : "Payment recorded") + (acct ? (k === "lend" ? " · taken from " : " · added to ") + acctName(v, acct) : ""))) { if (S.fromLedger) { S.fromLedger = false; sheetLedger(V(), V().people.find((x) => x.id === p.id) || np); } else closeSheet(); }
     });
 }
 
@@ -2383,7 +2408,7 @@ function sheetLedger(v, p) {
     <div class="ustats"><div><span class="eyebrow">Owes you now</span><b class="num">${fmt(L.bal)}</b></div><div><span class="eyebrow">Lent</span><b class="num neg">${fmt(r2(L.start + L.lent))}</b><span class="note">${L.start ? "incl. " + fmt(L.start) + " starting balance" : ""}</span></div><div><span class="eyebrow">Paid back</span><b class="num pos">${fmt(L.repaid)}</b></div></div>
     <div class="ledger"><div class="lrow lhead"><span class="ld">Date</span><span class="lt">What</span><span class="la">Amount</span><span class="lb">Balance</span></div>
       ${row(dShort(p.startDate) + " ’" + String(p.startDate).slice(2, 4), "Starting balance", fmt(L.start), "", L.start)}
-      ${L.rows.map((e) => row(dShort(e.d) + " ’" + e.d.slice(2, 4), e.n || (e.k === "lend" ? "Lent" : "Paid back"), (e.k === "lend" ? "+" : "−") + fmt(e.a), e.k === "lend" ? "neg" : "pos", e.bal, e.id)).join("")}
+      ${L.rows.map((e) => row(dShort(e.d) + " ’" + e.d.slice(2, 4), [e.n || (e.k === "lend" ? "Lent" : "Paid back"), (() => { const t = owedTx(v, e); return t ? (e.k === "lend" ? "from " : "to ") + acctName(v, e.k === "lend" ? t.account : t.to) : ""; })()].filter(Boolean).join(" · "), (e.k === "lend" ? "+" : "−") + fmt(e.a), e.k === "lend" ? "neg" : "pos", e.bal, e.id)).join("")}
     </div>
     ${L.rows.length ? `<p class="note">Tap an entry to fix or delete it.</p>` : `<p class="note">No lending or payments recorded yet.</p>`}
     <div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn small" data-act="pentry" data-k="lend" data-id="${esc(p.id)}">Lent more</button><button type="button" class="btn small" data-act="pentry" data-k="repay" data-id="${esc(p.id)}">Paid back</button><span class="spacer" style="flex:1"></span><button type="button" class="btn small" data-act="ledgerimg">Save as image</button><button type="button" class="btn small" data-act="ledgerpdf">Save as PDF</button></div>
@@ -2394,13 +2419,17 @@ function sheetLedger(v, p) {
 function sheetPEntryEdit(v, p, e) {
   openSheet((e.k === "lend" ? "Lent to " : "Paid back by ") + p.name, `
     <div class="grid3">${fld("peK", "Type", `<select id="peK"><option value="lend"${e.k === "lend" ? " selected" : ""}>Lent</option><option value="repay"${e.k === "repay" ? " selected" : ""}>Paid back</option></select>`)}${fld("peAmt", "Amount", money("peAmt", e.a))}${fld("peDate", "Date", inp("peDate", e.d, 'type="date"'))}</div>
+    <div id="peAcctWrap">${owedAcctField(v, e.k, (() => { const t = owedTx(v, e); return t ? (e.k === "lend" ? t.account : t.to) : ""; })())}</div>
     ${fld("peNote", "Note", inp("peNote", e.n, 'maxlength="80"'))}`,
     async () => {
       const a = num(val("peAmt")); if (!(a > 0)) return shErr("Enter an amount greater than zero.");
-      const np = Object.assign({}, p, { entries: (p.entries || []).map((x) => (x.id === e.id ? Object.assign({}, x, { k: val("peK"), a, d: val("peDate") || x.d, n: val("peNote").trim() }) : x)) });
-      if (await act(() => store.put("people", np), "Saved")) sheetLedger(V(), V().people.find((x) => x.id === p.id) || np);
+      const ne = Object.assign({}, e, { k: val("peK"), a, d: val("peDate") || e.d, n: val("peNote").trim() });
+      const np = Object.assign({}, p, { entries: (p.entries || []).map((x) => (x.id === e.id ? ne : x)) });
+      const acct = val("peAcct");
+      if (await act(async () => { await store.put("people", np); await syncOwedTx(v, np, ne, acct); }, "Saved")) sheetLedger(V(), V().people.find((x) => x.id === p.id) || np);
     }, delBtn);
-  sheetDelete = async () => { const np = Object.assign({}, p, { entries: (p.entries || []).filter((x) => x.id !== e.id) }); if (await act(() => store.put("people", np), "Entry deleted")) sheetLedger(V(), V().people.find((x) => x.id === p.id) || np); };
+  $("peK").addEventListener("change", () => { const cur = val("peAcct"); $("peAcctWrap").innerHTML = owedAcctField(v, val("peK"), cur); });
+  sheetDelete = async () => { const np = Object.assign({}, p, { entries: (p.entries || []).filter((x) => x.id !== e.id) }); const t = owedTx(v, e); if (await act(async () => { await store.put("people", np); if (t) await store.del("txns", t.id); }, "Entry deleted")) sheetLedger(V(), V().people.find((x) => x.id === p.id) || np); };
 }
 async function ledgerCanvas(p) {
   try { await document.fonts.ready; } catch (e) { /* fonts optional */ }
@@ -2438,6 +2467,92 @@ async function ledgerCanvas(p) {
   return cv;
 }
 
+/* ============ daily spending charts: the week in bars, the month as a treemap ============ */
+const isDaily = (t) => t.type === "expense" && (!t.link || t.link.kind === "fee");
+function isoDay(d) { return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
+function weekDays(off) {
+  const d = new Date(todayStr() + "T00:00:00"); d.setDate(d.getDate() - ((d.getDay() + 6) % 7) + 7 * (off || 0));
+  return Array.from({ length: 7 }, (_, i) => { const x = new Date(d); x.setDate(d.getDate() + i); return isoDay(x); });
+}
+/* squarified treemap: lays items (largest first) into rows that keep cells close to square */
+function squarify(items, x, y, w, h) {
+  const out = []; let rest = items.slice(); const total = sum(rest, (i) => i.v); if (!(total > 0)) return out;
+  const scale = (w * h) / total; rest = rest.map((i) => Object.assign({}, i, { a: i.v * scale }));
+  const worst = (row, side) => { const s = sum(row, (r) => r.a), mx = Math.max(...row.map((r) => r.a)), mn = Math.min(...row.map((r) => r.a)); return Math.max((side * side * mx) / (s * s), (s * s) / (side * side * mn)); };
+  while (rest.length) {
+    const side = Math.min(w, h); const row = [rest[0]]; let i = 1;
+    while (i < rest.length && worst(row.concat([rest[i]]), side) <= worst(row, side)) { row.push(rest[i]); i++; }
+    const s = sum(row, (r) => r.a);
+    if (w >= h) { const cw = s / h; let cy = y; row.forEach((r) => { const ch = r.a / cw; out.push(Object.assign(r, { x, y: cy, w: cw, h: ch })); cy += ch; }); x += cw; w -= cw; }
+    else { const ch = s / w; let cx = x; row.forEach((r) => { const cw = r.a / ch; out.push(Object.assign(r, { x: cx, y, w: cw, h: ch })); cx += cw; }); y += ch; h -= ch; }
+    rest = rest.slice(i);
+  }
+  return out;
+}
+function treemap(items, opt) {
+  const narrow = window.innerWidth < 560; const W = narrow ? 330 : 420, H = narrow ? 240 : 250, G = 2;
+  const total = sum(items, (i) => i.v); if (!(total > 0)) return `<div class="empty">${esc(opt.empty || "No spending logged yet.")}</div>`;
+  const cells = squarify(items, 0, 0, W, H); const n = cells.length;
+  const F = "Google Sans Flex, Helvetica Neue, Helvetica, Arial, sans-serif";
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(opt.label || "Treemap")}">`;
+  cells.forEach((c, i) => {
+    /* one hue, darker for bigger shares: the label carries identity, so color only has to show size */
+    const op = n > 1 ? 0.92 - (0.7 * i) / (n - 1) : 0.92; const dark = op > 0.5;
+    const x = c.x + G / 2, y = c.y + G / 2, w = Math.max(0, c.w - G), h = Math.max(0, c.h - G);
+    const pct = Math.round((c.v / total) * 100);
+    const sel = opt.sel && opt.sel === c.k;
+    s += `<g class="tm-cell" data-act="${c.other ? "" : "daycat"}" data-cat="${esc(c.other ? "" : c.k)}" style="cursor:${c.other ? "default" : "pointer"}"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="4" fill="var(--accent)" fill-opacity="${op}" ${sel ? 'stroke="var(--ink)" stroke-width="2.5"' : ""}><title>${esc(c.label)} · ${esc(fmt(c.v))} · ${pct}%</title></rect>`;
+    const ink = dark ? "var(--accent-ink)" : "var(--ink)";
+    const fs = w > 150 && h > 70 ? 15 : 12.5;
+    if (w > 54 && h > 36) {
+      const name = (() => { let t = c.label; const max = Math.floor((w - 14) / (fs * 0.55)); return t.length > max ? t.slice(0, Math.max(1, max - 1)) + "…" : t; })();
+      s += `<text x="${x + 8}" y="${y + fs + 6}" font-size="${fs}" font-weight="600" fill="${ink}" font-family="${F}" pointer-events="none">${esc(name)}</text>`;
+      if (h > fs * 2 + 18) s += `<text x="${x + 8}" y="${y + fs * 2 + 12}" font-size="${fs - 1.5}" fill="${ink}" font-family="${F}" pointer-events="none">${esc(MK.format(c.v))} · ${pct}%</text>`;
+    }
+    s += `</g>`;
+  });
+  return s + "</svg>";
+}
+function dailyCharts(v) {
+  const off = S.dayWk || 0; const days = weekDays(off); const today = todayStr();
+  const byDay = days.map((d) => r2(sum(v.txns.filter((t) => isDaily(t) && t.date === d), (t) => +t.amount)));
+  const prevDays = weekDays(off - 1);
+  const wkTot = r2(sum(byDay, (x) => x));
+  /* compare like with like: this week so far against the same days last week */
+  const upto = days.indexOf(today) >= 0 ? days.indexOf(today) : 6;
+  const prevTot = r2(sum(v.txns.filter((t) => isDaily(t) && t.date >= prevDays[0] && t.date <= prevDays[upto]), (t) => +t.amount));
+  const cmpTot = r2(sum(byDay.slice(0, upto + 1), (x) => x));
+  const delta = prevTot > 0 && cmpTot > 0 ? Math.round(((cmpTot - prevTot) / prevTot) * 100) : null;
+  const biggest = byDay.indexOf(Math.max(...byDay));
+  const DOW = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  const labels = days.map((d, i) => DOW[i] + " " + Number(d.slice(8)));
+  const range = dShort(days[0]) + " – " + dShort(days[6]);
+
+  const inM = v.txns.filter((t) => isDaily(t) && t.date.startsWith(S.month));
+  const byCat = {}; inM.forEach((t) => (byCat[t.category || "Other"] = r2((byCat[t.category || "Other"] || 0) + (+t.amount))));
+  let cats = Object.keys(byCat).map((k) => ({ k, label: k, v: byCat[k] })).sort((a, b) => b.v - a.v);
+  const mTot = r2(sum(inM, (t) => +t.amount));
+  /* small slivers can't hold a label, so anything under 5% (or past the 7th) folds into Other */
+  const keep = cats.filter((c, i) => i < 7 && c.v / (mTot || 1) >= 0.05), rest = cats.filter((c) => !keep.includes(c));
+  if (rest.length > 1) cats = keep.concat([{ k: "__other", label: "Other (" + rest.length + ")", v: r2(sum(rest, (r) => r.v)), other: true }]);
+  const top = cats[0];
+
+  return `<div class="cols">
+    <section class="panel">
+      <div class="phead"><h2>Spending by day</h2><div class="wknav"><button type="button" class="btn small ghost" data-act="wkprev" aria-label="Previous week">‹</button><span class="eyebrow">${off === 0 ? "This week" : off === -1 ? "Last week" : esc(range)}</span><button type="button" class="btn small ghost" data-act="wknext" aria-label="Next week"${off >= 0 ? " disabled" : ""}>›</button></div></div>
+      <p class="vizsum"><b class="num">${fmt(wkTot)}</b> ${off === 0 ? "so far" : ""} · ${esc(range)}${delta === null ? "" : ` · <span class="${delta > 0 ? "neg" : "pos"}">${delta > 0 ? "▲" : "▼"} ${Math.abs(delta)}%</span> vs the same days ${off === 0 ? "last week" : "the week before"}`}</p>
+      <div class="chart">${barChart(labels, [{ name: "Spent", values: byDay, color: "var(--accent)" }], { h: 200, hi: days.indexOf(today) >= 0 ? days.indexOf(today) : undefined, valFmt: (n) => MK.format(n), label: "Daily spending " + range, empty: "No spending logged this week." })}</div>
+      ${wkTot > 0 ? `<p class="note">Biggest day: ${esc(DOW[biggest])} ${esc(dShort(days[biggest]))}, ${fmt(byDay[biggest])}. Bills and loan payments aren't included.</p>` : ""}
+    </section>
+    <section class="panel">
+      <div class="phead"><h2>Where it went</h2><span class="eyebrow">${esc(ymName(S.month))}</span></div>
+      <p class="vizsum">${top ? `<b>${esc(top.label)}</b> is your biggest category: ${fmt(top.v)}, ${Math.round((top.v / mTot) * 100)}% of ${fmt(mTot)}` : "Nothing logged this month yet."}</p>
+      <div class="chart">${treemap(cats, { label: "Daily spending by category, " + ymName(S.month), sel: S.dayFilter, empty: "No daily spending logged this month." })}</div>
+      ${cats.length ? `<p class="note">Tap a box to see just that category in your spending log.</p>` : ""}
+    </section>
+  </div>`;
+}
+
 /* keep a dated debt total so the history chart grows as you use the app */
 async function recordDebt() {
   if (V().demo || !S.settingsExists) return;
@@ -2463,6 +2578,10 @@ document.addEventListener("click", async (e) => {
     case "reloadxl": $("acctMenu").open = false; await reload(); toast(S.sync === "idle" ? "Reloaded from your sheet" : "Couldn't reach Google Sheets right now"); break;
     case "openxl": $("acctMenu").open = false; if (xl.webUrl) window.open(xl.webUrl, "_blank", "noopener"); else toast("Your Prudence sheet isn't ready yet."); break;
     case "close": closeSheet(); break;
+    case "wkprev": S.dayWk = (S.dayWk || 0) - 1; render(); break;
+    case "wknext": S.dayWk = Math.min(0, (S.dayWk || 0) + 1); render(); break;
+    case "daycat": S.dayFilter = S.dayFilter === el.dataset.cat ? null : el.dataset.cat; render(); if (S.dayFilter) { const l = $("spendLog"); if (l) l.scrollIntoView({ behavior: "smooth", block: "start" }); } break;
+    case "dayclear": S.dayFilter = null; render(); break;
     case "sheetdel": if (sheetDelete) armDelete(sheetDelete); break;
     case "pay": sheetPay(v, el.dataset.kind, id, el.dataset.period); break;
     case "newbill": sheetBill(v, null); break;

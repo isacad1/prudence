@@ -33,9 +33,13 @@ Prudence asks only for `drive.file`: it can see and edit files it created itself
 
 Bill payments, utility months and work expenses can have receipts attached (photos, screenshots or PDFs). Photos are shrunk before upload. Files are saved in a **Prudence Receipts** folder in your Google Drive and linked from the sheet.
 
+## Daily spending charts
+
+The Daily tab shows **Spending by day**, a bar chart of the week (use ‹ › for earlier weeks) compared with the same days the week before, and **Where it went**, a treemap of the month's daily spending by category. Tap a box to filter your spending log to that category. Bills and loan payments aren't included.
+
 ## Owed to me
 
-Each person has a full **History**: their starting balance, every amount lent and paid back, and the running balance after each one. Tap an entry to fix or delete it, and save the history as an image or PDF statement to send them.
+Each person has a full **History**: their starting balance, every amount lent and paid back, and the running balance after each one. Tap an entry to fix or delete it, and save the history as an image or PDF statement to send them. When you record **Lent** or **Paid back**, choose the account the money left or arrived in (for example GCash) and that account's balance updates. Lending and repayments aren't counted as spending or income.
 
 ## Reimbursements
 
