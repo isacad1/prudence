@@ -33,6 +33,16 @@ Prudence asks only for `drive.file`: it can see and edit files it created itself
 
 Bill payments, utility months and work expenses can have receipts attached (photos, screenshots or PDFs). Photos are shrunk before upload. Files are saved in a **Prudence Receipts** folder in your Google Drive and linked from the sheet.
 
+## Shopping list
+
+The **Shopping** tab is a list for groceries and household items. Add items with a quantity and price to see the trip's estimated total against your Groceries budget. In the store, tap the circle as each item goes in your cart and type what it actually cost. **Done shopping** asks for the receipt total, the account you paid with and the store, then records the trip as expenses split by category (with the receipt attached if you like). Unchecked items stay on the list. Every item remembers its last price, store and date, flags price increases, and shows up under **Buy again**; mark staples with how often you buy them and they appear under **Running low** when due.
+
+## Goals and coach
+
+On the **Goals** tab, set a goal: debt-free by a date, or save an amount by a date. Prudence works out your usual month from the last 3 full months (take-home, bills, scheduled loan payments, daily spending), tells you whether the date is reachable, how much extra to pay each month and cutoff, which debt to attack first (smallest balance), and your daily and weekly spending budget. A chart compares your debt with the path to your goal.
+
+The **Coach** gives a weekly and a monthly rundown of your daily spending: a verdict (Disciplined, On track, Overspent or Reckless) against your goal's budget, what your habits show (category spikes against your own usual, small-purchase leaks, weekend and payday splurges, spending on credit, big one-off buys, no-spend days), and a short to-do list for the next week or the rest of the month, including when you've earned a treat. All of it is computed in your browser from what you've logged.
+
 ## Daily spending charts
 
 The Daily tab shows **Spending by day**, a bar chart of the week (use ‹ › for earlier weeks) compared with the same days the week before, and **Where it went**, a treemap of the month's daily spending by category. Tap a box to filter your spending log to that category. Bills and loan payments aren't included.
@@ -49,6 +59,10 @@ Track work expenses until your employer pays you back: meeting meals (with a per
 
 On the House tab, **Housemate billing** shows each housemate's share of the month's electricity, water and internet. Tap a name to see the computation (for example ₱2,262.63 ÷ 3 = ₱754.21), copy a ready-to-send message, save the statement as an image or PDF to send (on a phone this opens the share sheet for Messenger, Viber or Photos), and mark it paid. Splits accept fractions like 1/3, so shares match an exact three-way split.
 
+## Account registers
+
+Tap any account on the Accounts tab (bank, e-wallet, card, savings or investment) to see every transaction in and out of it, newest first, with the running balance after each one. Switch between all time and the current month, and tap a line to open it. For savings and investments, statement values appear as their own lines.
+
 ## Transfers
 
 Move money between your own accounts with **Transfer money** (Accounts tab, or from Daily). Transfers don't count as spending; an optional fee is recorded as a Bank fees expense. Prudence remembers the fee for each pair of accounts, so a route with a fee fills it in and a free one stays blank. When you log a payday you can also choose **Then move it to**, for example salary from Landbank to MariBank.
@@ -61,4 +75,4 @@ For insurance with an investment fund (a VUL), tap **Track premiums** on that ac
 
 ## The spreadsheet
 
-One tab per area: Transactions, Bills, Loans, Accounts, Owed to me, Owed history, Utilities, Reimbursements, Account values, Premiums, Settings, plus a Read me tab. Older sheets are upgraded automatically: missing tabs and columns are added at the end, and existing rows are left alone. Read, filter and chart freely; don't rename tabs or headings, and make edits in the app so the two stay in step. Download for Excel any time with File → Download → Microsoft Excel (.xlsx).
+One tab per area: Transactions, Bills, Loans, Accounts, Owed to me, Owed history, Utilities, Reimbursements, Account values, Premiums, Shopping list, Settings, plus a Read me tab. Older sheets are upgraded automatically: missing tabs and columns are added at the end, and existing rows are left alone. Read, filter and chart freely; don't rename tabs or headings, and make edits in the app so the two stay in step. Download for Excel any time with File → Download → Microsoft Excel (.xlsx).
