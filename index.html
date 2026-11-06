@@ -297,6 +297,10 @@ button.rrow { cursor: pointer; } button.rrow:hover { background: var(--surface-2
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip { border: 1px solid var(--line); background: var(--surface-2); color: var(--ink); border-radius: 999px; padding: 6px 12px; font: inherit; font-size: 0.86rem; cursor: pointer; display: inline-flex; gap: 6px; align-items: baseline; } .chip small { color: var(--muted); font-size: 0.74rem; } .chip:hover { border-color: var(--line-strong); }
 .chip.warn { border-color: var(--warn); background: var(--warn-soft); }
+.row.flash { animation: flashrow 3s ease-out; }
+@keyframes flashrow { 0%, 35% { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--accent); } 100% { background: transparent; box-shadow: none; } }
+@media (prefers-reduced-motion: reduce) { .row.flash { animation: none; background: var(--accent-soft); } }
+@media (max-width: 560px) { .mrow { grid-template-columns: 1fr 1fr !important; } .mrow > .field:first-child { grid-column: 1 / -1; } }
 .bout { margin-top: 8px; } .bout img { width: 100%; max-width: 420px; border: 1px solid var(--line); border-radius: 10px; display: block; margin-bottom: 6px; }
 .vlist { display: flex; flex-direction: column; gap: 18px; }
 .vcard + .vcard { border-top: 1px dashed var(--line); padding-top: 16px; }
@@ -351,6 +355,7 @@ button.rrow { cursor: pointer; } button.rrow:hover { background: var(--surface-2
 @media (prefers-reduced-motion: reduce) { .tog .knob, .tog .knob::after { transition: none; } }
 @media (max-width: 900px) {
   .cols { grid-template-columns: minmax(0, 1fr); }
+  #quickPanel { order: -1; }
   .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .kpi:nth-child(3) { border-left: 0; }
   .kpi:nth-child(n+3) { border-top: 1px solid var(--line); }
@@ -445,7 +450,7 @@ const ACCT_GROUPS = [["Spending money", ["bank", "ewallet", "cash"]], ["Credit c
 const DEFAULT_CATS = ["Food", "Groceries", "Dining out", "Transport", "Shopping", "Health", "Personal care", "Entertainment", "Family", "Pets", "Gifts", "Work (reimbursable)", "Other"];
 const BILL_CATS = ["Rent", "Utilities", "Internet & phone", "Insurance", "Savings & contributions", "Card payments", "Family", "Subscriptions", "Other bills"];
 const INCOME_CATS = ["Salary", "13th month & bonus", "Reimbursement", "Side income", "Other income"];
-const TABS = [["overview", "Overview"], ["goals", "Goals"], ["daily", "Daily"], ["shop", "Shopping"], ["bills", "Bills"], ["loans", "Loans"], ["salary", "Salary"], ["owed", "Owed to me"], ["reimb", "Reimbursements"], ["house", "House"], ["accounts", "Accounts"]];
+const TABS = [["overview", "Overview"], ["goals", "Goals"], ["daily", "Daily"], ["bills", "Bills"], ["loans", "Loans"], ["salary", "Salary"], ["owed", "Owed to me"], ["reimb", "Reimbursements"], ["house", "House"], ["accounts", "Accounts"]];
 
 const DEFAULT_SETTINGS = {
   accounts: [], categories: DEFAULT_CATS.slice(), budgets: {},
@@ -500,7 +505,7 @@ const auth = {
 };
 
 /* ============ Google Sheets + Drive APIs ============ */
-const SCHEMA = {"Transactions": {"sheet": "Transactions", "cols": [["id", "ID", "text"], ["date", "Date", "date"], ["type", "Type", "text"], ["category", "Category", "text"], ["amount", "Amount (PHP)", "money"], ["account", "Account ID", "text"], ["accountName", "Account", "text"], ["to", "To account ID", "text"], ["toName", "To account", "text"], ["note", "Note", "text"], ["linkKind", "Linked to", "text"], ["linkId", "Linked ID", "text"], ["period", "Cutoff", "text"], ["gross", "Gross pay", "money"], ["tax", "Withholding tax", "money"], ["hmo", "HMO", "money"], ["equity", "Coop equity", "money"], ["coop", "Coop loan", "money"], ["tardy", "Tardy & undertime", "money"], ["absent", "Absences", "money"], ["other", "Other deductions", "money"], ["createdAt", "Created", "int"], ["receipts", "Receipts", "text"]]}, "Bills": {"sheet": "Bills", "cols": [["id", "ID", "text"], ["name", "Bill", "text"], ["amount", "Usual amount (PHP)", "money"], ["cycle", "Cutoff", "text"], ["category", "Category", "text"], ["payTo", "Pays account ID", "text"], ["payToName", "Pays account", "text"], ["active", "Active", "text"]]}, "Loans": {"sheet": "Loans", "cols": [["id", "ID", "text"], ["name", "Loan", "text"], ["lender", "Lender", "text"], ["balance", "Balance (PHP)", "money"], ["asOf", "Balance as of", "date"], ["payment", "Payment each due (PHP)", "money"], ["cycle", "Due on", "text"], ["left", "Payments left", "int"], ["original", "Original total (PHP)", "money"]]}, "Accounts": {"sheet": "Accounts", "cols": [["id", "ID", "text"], ["name", "Account", "text"], ["type", "Type", "text"], ["opening", "Opening balance (PHP)", "money"]]}, "People": {"sheet": "Owed to me", "cols": [["id", "ID", "text"], ["name", "Person", "text"], ["start", "Owed at start (PHP)", "money"], ["startDate", "As of", "date"]]}, "OwedEntries": {"sheet": "Owed history", "cols": [["id", "ID", "text"], ["personId", "Person ID", "text"], ["personName", "Person", "text"], ["d", "Date", "date"], ["k", "Entry", "text"], ["a", "Amount (PHP)", "money"], ["n", "Note", "text"]]}, "Utilities": {"sheet": "Utilities", "cols": [["id", "Month", "month"], ["elec", "Electricity (PHP)", "money"], ["kwh", "kWh", "num"], ["elecFee", "Electricity fee (PHP)", "money"], ["water", "Water (PHP)", "money"], ["cum", "cu.m.", "num"], ["waterFee", "Water fee (PHP)", "money"], ["internet", "Internet (PHP)", "money"], ["paid", "Housemates paid", "text"], ["receipts", "Receipts", "text"], ["elecPeriod", "Electricity period", "text"], ["waterPeriod", "Water period", "text"], ["payBy", "Housemates pay by", "date"]]}, "Settings": {"sheet": "Settings", "cols": [["key", "Key", "text"], ["value", "Value", "text"]]}, "Reimb": {"sheet": "Reimbursements", "cols": [["id", "ID", "text"], ["date", "Date", "date"], ["event", "Meeting / event", "text"], ["vendor", "Purchased from", "text"], ["rtype", "Type", "text"], ["amount", "Amount (PHP)", "money"], ["account", "Paid from ID", "text"], ["accountName", "Paid from", "text"], ["headcount", "Headcount", "int"], ["attendees", "Staff attendees", "text"], ["receipts", "Receipts", "text"], ["claimed", "Claimed", "text"], ["claimedDate", "Claimed on", "date"], ["received", "Received (PHP)", "money"], ["toAccount", "Received in ID", "text"], ["toAccountName", "Received in", "text"], ["outcome", "Excess outcome", "text"], ["staffShare", "Each staff share (PHP)", "money"], ["myShare", "My share (PHP)", "money"], ["staffEntries", "Staff charge IDs", "text"]]}, "Values": {"sheet": "Account values", "cols": [["id", "ID", "text"], ["accountId", "Account ID", "text"], ["accountName", "Account", "text"], ["date", "As of", "date"], ["value", "Value (PHP)", "money"], ["note", "Note", "text"]]}, "Premiums": {"sheet": "Premiums", "cols": [["id", "ID", "text"], ["accountId", "Account ID", "text"], ["accountName", "Policy / account", "text"], ["date", "Paid on", "date"], ["amount", "Premium (PHP)", "money"], ["from", "Paid from ID", "text"], ["fromName", "Paid from", "text"], ["note", "Note", "text"]]}, "Shop": {"sheet": "Shopping list", "cols": [["id", "ID", "text"], ["name", "Item", "text"], ["cat", "Category", "text"], ["qty", "Qty", "num"], ["unit", "Unit", "text"], ["est", "Price each (PHP)", "money"], ["store", "Store", "text"], ["need", "On list", "text"], ["cart", "In cart", "text"], ["paid", "Paid (PHP)", "money"], ["lastPrice", "Last price", "money"], ["prevPrice", "Price before", "money"], ["lastDate", "Last bought", "date"], ["lastStore", "Last store", "text"], ["every", "Every (days)", "int"], ["note", "Note", "text"]]}};
+const SCHEMA = {"Transactions": {"sheet": "Transactions", "cols": [["id", "ID", "text"], ["date", "Date", "date"], ["type", "Type", "text"], ["category", "Category", "text"], ["amount", "Amount (PHP)", "money"], ["account", "Account ID", "text"], ["accountName", "Account", "text"], ["to", "To account ID", "text"], ["toName", "To account", "text"], ["note", "Note", "text"], ["linkKind", "Linked to", "text"], ["linkId", "Linked ID", "text"], ["period", "Cutoff", "text"], ["gross", "Gross pay", "money"], ["tax", "Withholding tax", "money"], ["hmo", "HMO", "money"], ["equity", "Coop equity", "money"], ["coop", "Coop loan", "money"], ["tardy", "Tardy & undertime", "money"], ["absent", "Absences", "money"], ["other", "Other deductions", "money"], ["createdAt", "Created", "int"], ["receipts", "Receipts", "text"]]}, "Bills": {"sheet": "Bills", "cols": [["id", "ID", "text"], ["name", "Bill", "text"], ["amount", "Usual amount (PHP)", "money"], ["cycle", "Cutoff", "text"], ["category", "Category", "text"], ["payTo", "Pays account ID", "text"], ["payToName", "Pays account", "text"], ["active", "Active", "text"]]}, "Loans": {"sheet": "Loans", "cols": [["id", "ID", "text"], ["name", "Loan", "text"], ["lender", "Lender", "text"], ["balance", "Balance (PHP)", "money"], ["asOf", "Balance as of", "date"], ["payment", "Payment each due (PHP)", "money"], ["cycle", "Due on", "text"], ["left", "Payments left", "int"], ["original", "Original total (PHP)", "money"]]}, "Accounts": {"sheet": "Accounts", "cols": [["id", "ID", "text"], ["name", "Account", "text"], ["type", "Type", "text"], ["opening", "Opening balance (PHP)", "money"]]}, "People": {"sheet": "Owed to me", "cols": [["id", "ID", "text"], ["name", "Person", "text"], ["start", "Owed at start (PHP)", "money"], ["startDate", "As of", "date"]]}, "OwedEntries": {"sheet": "Owed history", "cols": [["id", "ID", "text"], ["personId", "Person ID", "text"], ["personName", "Person", "text"], ["d", "Date", "date"], ["k", "Entry", "text"], ["a", "Amount (PHP)", "money"], ["n", "Note", "text"]]}, "Utilities": {"sheet": "Utilities", "cols": [["id", "Month", "month"], ["elec", "Electricity (PHP)", "money"], ["kwh", "kWh", "num"], ["elecFee", "Electricity fee (PHP)", "money"], ["water", "Water (PHP)", "money"], ["cum", "cu.m.", "num"], ["waterFee", "Water fee (PHP)", "money"], ["internet", "Internet (PHP)", "money"], ["paid", "Housemates paid", "text"], ["receipts", "Receipts", "text"], ["elecPeriod", "Electricity period", "text"], ["waterPeriod", "Water period", "text"], ["payBy", "Housemates pay by", "date"], ["rent", "Rent (PHP)", "money"]]}, "Settings": {"sheet": "Settings", "cols": [["key", "Key", "text"], ["value", "Value", "text"]]}, "Reimb": {"sheet": "Reimbursements", "cols": [["id", "ID", "text"], ["date", "Date", "date"], ["event", "Meeting / event", "text"], ["vendor", "Purchased from", "text"], ["rtype", "Type", "text"], ["amount", "Amount (PHP)", "money"], ["account", "Paid from ID", "text"], ["accountName", "Paid from", "text"], ["headcount", "Headcount", "int"], ["attendees", "Staff attendees", "text"], ["receipts", "Receipts", "text"], ["claimed", "Claimed", "text"], ["claimedDate", "Claimed on", "date"], ["received", "Received (PHP)", "money"], ["toAccount", "Received in ID", "text"], ["toAccountName", "Received in", "text"], ["outcome", "Excess outcome", "text"], ["staffShare", "Each staff share (PHP)", "money"], ["myShare", "My share (PHP)", "money"], ["staffEntries", "Staff charge IDs", "text"]]}, "Values": {"sheet": "Account values", "cols": [["id", "ID", "text"], ["accountId", "Account ID", "text"], ["accountName", "Account", "text"], ["date", "As of", "date"], ["value", "Value (PHP)", "money"], ["note", "Note", "text"]]}, "Premiums": {"sheet": "Premiums", "cols": [["id", "ID", "text"], ["accountId", "Account ID", "text"], ["accountName", "Policy / account", "text"], ["date", "Paid on", "date"], ["amount", "Premium (PHP)", "money"], ["from", "Paid from ID", "text"], ["fromName", "Paid from", "text"], ["note", "Note", "text"]]}, "Shop": {"sheet": "Shopping list", "cols": [["id", "ID", "text"], ["name", "Item", "text"], ["cat", "Category", "text"], ["qty", "Qty", "num"], ["unit", "Unit", "text"], ["est", "Price each (PHP)", "money"], ["store", "Store", "text"], ["need", "On list", "text"], ["cart", "In cart", "text"], ["paid", "Paid (PHP)", "money"], ["lastPrice", "Last price", "money"], ["prevPrice", "Price before", "money"], ["lastDate", "Last bought", "date"], ["lastStore", "Last store", "text"], ["every", "Every (days)", "int"], ["note", "Note", "text"]]}};
 const COLLS = ["txns", "bills", "loans", "people", "utilities", "reimb", "values", "premiums", "shop"];
 const KEYCOL = { Settings: "key", Utilities: "id" };
 const keyOf = (T) => KEYCOL[T] || "id";
@@ -722,7 +727,7 @@ const model = {
     const loans = (t.Loans || []).map((r) => ({ id: r.id, name: r.name, lender: r.lender || "", balance: r.balance || 0, asOf: r.asOf || todayStr(), payment: r.payment || 0, cycle: txtCyc(r.cycle || "15th"), left: r.left || 0, original: r.original || r.balance || 0 }));
     const entries = {}; (t.OwedEntries || []).forEach((r) => { (entries[r.personId] = entries[r.personId] || []).push({ id: r.id, d: r.d, k: r.k === "Lent" ? "lend" : "repay", a: r.a || 0, n: r.n || "" }); });
     const people = (t.People || []).map((r) => ({ id: r.id, name: r.name, start: r.start || 0, startDate: r.startDate || todayStr(), entries: entries[r.id] || [] }));
-    const utilities = (t.Utilities || []).map((r) => { const paid = {}; String(r.paid || "").split(",").map((s) => s.trim()).filter(Boolean).forEach((n) => (paid[n] = true)); return { id: r.id, elec: r.elec || 0, kwh: r.kwh || 0, elecFee: r.elecFee || 0, water: r.water || 0, cum: r.cum || 0, waterFee: r.waterFee || 0, internet: r.internet || 0, paid, receipts: txtToRc(r.receipts), elecPeriod: r.elecPeriod || "", waterPeriod: r.waterPeriod || "", payBy: r.payBy || "" }; });
+    const utilities = (t.Utilities || []).map((r) => { const paid = {}; String(r.paid || "").split(",").map((s) => s.trim()).filter(Boolean).forEach((n) => (paid[n] = true)); return { id: r.id, elec: r.elec || 0, kwh: r.kwh || 0, elecFee: r.elecFee || 0, water: r.water || 0, cum: r.cum || 0, waterFee: r.waterFee || 0, internet: r.internet || 0, paid, receipts: txtToRc(r.receipts), elecPeriod: r.elecPeriod || "", waterPeriod: r.waterPeriod || "", payBy: r.payBy || "", rent: r.rent || 0 }; });
     const list = (x) => String(x || "").split(",").map((s) => s.trim()).filter(Boolean);
     const reimb = (t.Reimb || []).map((r) => ({ id: r.id, date: r.date || todayStr(), event: r.event || "", vendor: r.vendor || "", rtype: REIMB_TYPES.includes(r.rtype) ? r.rtype : "Other", amount: r.amount || 0, account: r.account || "", headcount: r.headcount || "", attendees: list(r.attendees), receipts: txtToRc(r.receipts), claimed: r.claimed === "Yes", claimedDate: r.claimedDate || "", received: r.received, toAccount: r.toAccount || "", outcome: r.outcome || "", staffShare: r.staffShare, myShare: r.myShare, staffEntries: list(r.staffEntries) }));
     const values = (t.Values || []).map((r) => ({ id: r.id, accountId: r.accountId || "", date: r.date || todayStr(), value: r.value || 0, note: r.note || "" }));
@@ -739,7 +744,7 @@ const model = {
     }
     if (c === "bills") return [["Bills", { id: o.id, name: o.name, amount: o.amount, cycle: CYC_TXT[o.cycle], category: o.category, payTo: o.payTo || "", payToName: o.payTo ? this.acct(o.payTo).name || "" : "", active: o.active === false ? "No" : "Yes" }]];
     if (c === "loans") return [["Loans", { id: o.id, name: o.name, lender: o.lender, balance: o.balance, asOf: o.asOf, payment: o.payment, cycle: CYC_TXT[o.cycle], left: o.left, original: o.original }]];
-    if (c === "utilities") return [["Utilities", { id: o.id, elec: o.elec, kwh: o.kwh, elecFee: o.elecFee, water: o.water, cum: o.cum, waterFee: o.waterFee, internet: o.internet, paid: Object.keys(o.paid || {}).filter((k) => o.paid[k]).join(", "), receipts: rcToTxt(o.receipts), elecPeriod: o.elecPeriod || "", waterPeriod: o.waterPeriod || "", payBy: o.payBy || "" }]];
+    if (c === "utilities") return [["Utilities", { id: o.id, elec: o.elec, kwh: o.kwh, elecFee: o.elecFee, water: o.water, cum: o.cum, waterFee: o.waterFee, internet: o.internet, paid: Object.keys(o.paid || {}).filter((k) => o.paid[k]).join(", "), receipts: rcToTxt(o.receipts), elecPeriod: o.elecPeriod || "", waterPeriod: o.waterPeriod || "", payBy: o.payBy || "", rent: o.rent || 0 }]];
     if (c === "shop") return [["Shop", { id: o.id, name: o.name, cat: o.cat, qty: o.qty, unit: o.unit || "", est: o.est, store: o.store || "", need: o.need ? "Yes" : "", cart: o.cart ? "Yes" : "", paid: o.cart ? o.paid : "", lastPrice: o.lastPrice, prevPrice: o.prevPrice, lastDate: o.lastDate || "", lastStore: o.lastStore || "", every: o.every || "", note: o.note || "" }]];
     if (c === "premiums") return [["Premiums", { id: o.id, accountId: o.accountId, accountName: this.acct(o.accountId).name || "", date: o.date, amount: o.amount, from: o.from || "", fromName: o.from ? this.acct(o.from).name || "" : "", note: o.note || "" }]];
     if (c === "values") return [["Values", { id: o.id, accountId: o.accountId, accountName: this.acct(o.accountId).name || "", date: o.date, value: o.value, note: o.note || "" }]];
@@ -1215,13 +1220,12 @@ function tDaily(v) {
     <div class="kpi"><span class="eyebrow">${esc(ymShort(S.month))} so far</span><span class="v">${fmt(monthTot)}</span><span class="s">${inM.length} entries</span></div>
     <div class="kpi"><span class="eyebrow">Daily average</span><span class="v">${fmt(monthTot / Math.max(1, S.month === ymOf(today) ? Number(today.slice(8)) : lastDay(S.month)))}</span><span class="s">Excludes bills &amp; loans</span></div>
   </section>
-  ${dailyCharts(v)}
   <div class="cols">
     <section class="panel" id="spendLog">
       <div class="phead"><h2>Spending log</h2>${S.dayFilter ? `<button type="button" class="chipx" data-act="dayclear">${esc(S.dayFilter)} · ${fmt(sum(shown, (t) => +t.amount))} <span aria-hidden="true">✕</span><span class="sr-only"> Show all</span></button>` : `<span class="eyebrow">${esc(ymName(S.month))}</span>`}</div>
-      ${shown.length ? Object.keys(groups).sort().reverse().map((d) => `<div class="day-head"><span>${esc(dLabel(d))}</span><span class="num">${fmt(sum(groups[d], (t) => +t.amount))}</span></div>` + groups[d].map((t) => `<button type="button" class="row" data-act="edittx" data-id="${esc(t.id)}"><span class="bar6" style="background:var(--expense)"></span><span style="min-width:0"><span class="t" style="display:block">${esc(t.category)}</span><span class="m" style="display:block">${esc([t.note, acctName(v, t.account)].filter(Boolean).join(" · "))}</span></span><span class="r"><span class="amt">${fmt(t.amount)}</span></span></button>`).join("")).join("") : `<div class="empty"><strong>Nothing logged for ${esc(ymName(S.month))}</strong>Use the quick add to record what you spend each day.</div>`}
+      ${shown.length ? Object.keys(groups).sort().reverse().map((d) => `<div class="day-head"><span>${esc(dLabel(d))}</span><span class="num">${fmt(sum(groups[d], (t) => +t.amount))}</span></div>` + groups[d].map((t) => `<button type="button" class="row${t.id === S.flashId ? " flash" : ""}" data-act="edittx" data-id="${esc(t.id)}"><span class="bar6" style="background:var(--expense)"></span><span style="min-width:0"><span class="t" style="display:block">${esc(t.category)}</span><span class="m" style="display:block">${esc([t.note, acctName(v, t.account)].filter(Boolean).join(" · "))}</span></span><span class="r"><span class="amt">${fmt(t.amount)}</span></span></button>`).join("")).join("") : `<div class="empty"><strong>Nothing logged for ${esc(ymName(S.month))}</strong>Use the quick add to record what you spend each day.</div>`}
     </section>
-    <section class="panel">
+    <section class="panel" id="quickPanel">
       <div class="phead"><h2>Quick add</h2><button type="button" class="btn small ghost" data-act="transfer">Transfer between accounts</button></div>
       <form class="quick" id="quickForm" novalidate>
         <div class="amount-field"><span>₱</span><input id="qAmt" inputmode="decimal" placeholder="0.00" autocomplete="off" aria-label="Amount"></div>
@@ -1235,7 +1239,8 @@ function tDaily(v) {
         <button type="submit" class="btn primary" style="padding:12px">Add expense</button>
       </form>
     </section>
-  </div>`;
+  </div>
+  ${dailyCharts(v)}`;
 }
 
 function tBills(v) {
@@ -1347,7 +1352,7 @@ function tOwed(v) {
 function tHouse(v) {
   const mates = v.settings.house && v.settings.house.mates || [];
   const rows = v.utilities.slice().sort((a, b) => b.id.localeCompare(a.id));
-  const tot = (u) => r2((+u.elec || 0) + (+u.elecFee || 0) + (+u.water || 0) + (+u.waterFee || 0) + (+u.internet || 0));
+  const tot = (u) => r2((+u.rent || 0) + (+u.elec || 0) + (+u.elecFee || 0) + (+u.water || 0) + (+u.waterFee || 0) + (+u.internet || 0));
   const share = (u, m) => mateBill(u, m).total;
   const mine = (u) => r2(tot(u) - sum(mates, (m) => share(u, m)));
   const unpaidMates = rows.flatMap((u) => mates.filter((m) => !(u.paid || {})[m.name] && share(u, m) > 0).map((m) => ({ u, m })));
@@ -1395,8 +1400,8 @@ function tHouse(v) {
   ${utilPanel("Water", "var(--accent)", water, cum, wRate, "cu.m.", "cu.m.", "Water rate is the water bill divided by cubic metres used.")}
   <section class="panel">
     <div class="phead"><h2>Utility bills</h2><div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn small primary" data-act="newutil">Log a month</button><button type="button" class="btn small" data-act="mates">Housemates &amp; splits</button></div></div>
-    <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Month</th><th>Electricity</th><th>kWh</th><th>₱/kWh</th><th>Water</th><th>cu.m.</th><th>₱/cu.m.</th><th>Internet</th><th>Total</th><th>You</th>${mates.map((m) => `<th>${esc(m.name)}</th>`).join("")}<th>Receipt</th></tr></thead><tbody>
-    ${rows.map((u) => `<tr class="clickable" data-act="editutil" data-id="${esc(u.id)}"><td>${esc(ymName(u.id, { month: "short", year: "numeric" }))}</td><td>${fmt(u.elec)}</td><td>${u.kwh || "—"}</td><td>${div(+u.elec, +u.kwh) ? div(+u.elec, +u.kwh).toFixed(2) : "—"}</td><td>${fmt(u.water)}</td><td>${u.cum || "—"}</td><td>${div(+u.water, +u.cum) ? div(+u.water, +u.cum).toFixed(2) : "—"}</td><td>${fmt(u.internet)}</td><td>${fmt(tot(u))}</td><td>${fmt(mine(u))}</td>${mates.map((m) => `<td class="${(u.paid || {})[m.name] ? "pos" : "neg"}">${fmt(share(u, m))} ${(u.paid || {})[m.name] ? "✓" : ""}</td>`).join("")}<td>${(u.receipts || []).length ? rcLinks(u.receipts, "View") : "—"}</td></tr>`).join("") || `<tr><td colspan="${11 + mates.length}" style="text-align:center;color:var(--muted);font-family:var(--f-body)">No utility bills logged yet. Tap “Log a month” to add one.</td></tr>`}
+    <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Month</th><th>Electricity</th><th>kWh</th><th>₱/kWh</th><th>Water</th><th>cu.m.</th><th>₱/cu.m.</th><th>Internet</th><th>Rent</th><th>Total</th><th>You</th>${mates.map((m) => `<th>${esc(m.name)}</th>`).join("")}<th>Receipt</th></tr></thead><tbody>
+    ${rows.map((u) => `<tr class="clickable" data-act="editutil" data-id="${esc(u.id)}"><td>${esc(ymName(u.id, { month: "short", year: "numeric" }))}</td><td>${fmt(u.elec)}</td><td>${u.kwh || "—"}</td><td>${div(+u.elec, +u.kwh) ? div(+u.elec, +u.kwh).toFixed(2) : "—"}</td><td>${fmt(u.water)}</td><td>${u.cum || "—"}</td><td>${div(+u.water, +u.cum) ? div(+u.water, +u.cum).toFixed(2) : "—"}</td><td>${fmt(u.internet)}</td><td>${+u.rent ? fmt(u.rent) : "—"}</td><td>${fmt(tot(u))}</td><td>${fmt(mine(u))}</td>${mates.map((m) => `<td class="${(u.paid || {})[m.name] ? "pos" : "neg"}">${fmt(share(u, m))} ${(u.paid || {})[m.name] ? "✓" : ""}</td>`).join("")}<td>${(u.receipts || []).length ? rcLinks(u.receipts, "View") : "—"}</td></tr>`).join("") || `<tr><td colspan="${12 + mates.length}" style="text-align:center;color:var(--muted);font-family:var(--f-body)">No utility bills logged yet. Tap “Log a month” to add one.</td></tr>`}
     </tbody></table></div>
     <p class="note" style="margin-top:8px">Tap a month to edit it or mark a housemate's share as paid. Use the month arrows at the top to switch years.</p>
   </section>`;
@@ -1684,20 +1689,21 @@ function sheetPEntry(v, p, k) {
 function sheetUtil(v, u) {
   const isNew = !u; const mates = v.settings.house && v.settings.house.mates || [];
   const lastU = v.utilities.slice().sort((a, b) => b.id.localeCompare(a.id))[0];
-  u = u || { id: S.month, elec: "", elecFee: lastU ? lastU.elecFee : "", kwh: "", water: "", waterFee: lastU ? lastU.waterFee : "", cum: "", internet: lastU ? lastU.internet : "", paid: {} };
+  u = u || { id: S.month, elec: "", elecFee: lastU ? lastU.elecFee : "", kwh: "", water: "", waterFee: lastU ? lastU.waterFee : "", cum: "", internet: lastU ? lastU.internet : "", rent: lastU ? lastU.rent || "" : "", paid: {} };
   openSheet(isNew ? "Log utility bills" : "Utilities · " + ymName(u.id), `
     ${fld("uMonth", "Bill month", inp("uMonth", u.id, 'type="month"' + (isNew ? "" : " disabled")))}
     <div class="grid3">${fld("uElec", "Electricity bill", money("uElec", u.elec))}${fld("uKwh", "kWh used", inp("uKwh", u.kwh, 'inputmode="numeric"'))}${fld("uEFee", "Payment fee", money("uEFee", u.elecFee))}</div>
     <div class="grid3">${fld("uWater", "Water bill", money("uWater", u.water))}${fld("uCum", "cu.m. used", inp("uCum", u.cum, 'inputmode="numeric"'))}${fld("uWFee", "Payment fee", money("uWFee", u.waterFee))}</div>
     <div class="grid2">${fld("uEPer", "Electricity billing period (optional)", inp("uEPer", u.elecPeriod || "", 'maxlength="40" placeholder="e.g. Aug 16 – Sep 15"'))}${fld("uWPer", "Water billing period (optional)", inp("uWPer", u.waterPeriod || "", 'maxlength="40" placeholder="e.g. Aug 21 – Sep 19"'))}</div>
+    <div class="grid2">${fld("uRent", "Rent", money("uRent", u.rent))}<span></span></div>
     <div class="grid2">${fld("uNet", "Internet", money("uNet", u.internet))}${fld("uPayBy", "Housemates pay by (optional)", inp("uPayBy", u.payBy || "", 'type="date"'))}</div>
-    ${mates.length ? `<div><div class="lbl" style="margin-bottom:6px">Housemate paid their share</div>${mates.map((m, i) => `<label style="display:flex;gap:8px;align-items:center;padding:4px 0"><input type="checkbox" id="uPaid${i}"${(u.paid || {})[m.name] ? " checked" : ""}> ${esc(m.name)}</label>`).join("")}</div>` : `<p class="note">Add housemates under “Housemates &amp; splits” to track their shares.</p>`}
+    ${mates.length && !isNew ? `<div><div class="lbl" style="margin-bottom:6px">Housemates</div>${mates.map((m) => { const pd = (u.paid || {})[m.name]; const inc = v.txns.find((t) => t.link && t.link.kind === "mateshare" && t.link.id === u.id + ":" + m.name); return `<div style="display:flex;gap:8px;align-items:center;justify-content:space-between;padding:4px 0"><span>${esc(m.name)} · <span class="${pd ? (inc ? "pos" : "warn-t") : "note"}">${pd ? (inc ? "paid to " + esc(acctName(v, inc.account)) : "paid, not in an account") : "unpaid"}</span></span><button type="button" class="btn small" data-act="billing" data-name="${esc(m.name)}" data-month="${esc(u.id)}">${pd && inc ? "View" : pd ? "Add to account" : "Record payment"}</button></div>`; }).join("")}<p class="note">Payments are recorded on the housemate's bill so the money lands in one of your accounts.</p></div>` : mates.length ? "" : `<p class="note">Add housemates under “Housemates &amp; splits” to track their shares.</p>`}
     ${receiptField()}`,
     async () => {
       const id = val("uMonth"); if (!/^\d{4}-\d{2}$/.test(id)) return shErr("Pick the bill month.");
       if (RCS.busy) return shErr("Wait for the receipt to finish uploading.");
-      const paid = {}; mates.forEach((m, i) => { if ($("uPaid" + i).checked) paid[m.name] = true; });
-      const nu = { id, elec: num(val("uElec")) || 0, kwh: num(val("uKwh")) || 0, elecFee: num(val("uEFee")) || 0, water: num(val("uWater")) || 0, cum: num(val("uCum")) || 0, waterFee: num(val("uWFee")) || 0, internet: num(val("uNet")) || 0, paid, receipts: rcClean(RCS.list), elecPeriod: val("uEPer").trim(), waterPeriod: val("uWPer").trim(), payBy: val("uPayBy") };
+      const paid = Object.assign({}, u.paid || {});
+      const nu = { id, rent: num(val("uRent")) || 0, elec: num(val("uElec")) || 0, kwh: num(val("uKwh")) || 0, elecFee: num(val("uEFee")) || 0, water: num(val("uWater")) || 0, cum: num(val("uCum")) || 0, waterFee: num(val("uWFee")) || 0, internet: num(val("uNet")) || 0, paid, receipts: rcClean(RCS.list), elecPeriod: val("uEPer").trim(), waterPeriod: val("uWPer").trim(), payBy: val("uPayBy") };
       const gone = v.txns.filter((t) => t.link && t.link.kind === "mateshare" && t.link.id.startsWith(id + ":") && !paid[t.link.id.slice(id.length + 1)]);
       if (await act(async () => { await store.put("utilities", nu); for (const t of gone) await store.del("txns", t.id); }, "Utilities saved for " + ymName(id))) closeSheet();
     }, isNew ? "" : delBtn);
@@ -1706,16 +1712,16 @@ function sheetUtil(v, u) {
 }
 function sheetMates(v) {
   const mates = clone(v.settings.house && v.settings.house.mates || []);
-  if (!mates.length) mates.push({ name: "", elec: 33.33, water: 33.33, internet: 50 });
-  const rowsH = () => mates.map((m, i) => `<div class="grid2" style="grid-template-columns: 1.4fr 1fr 1fr 1fr; align-items:end">${fld("mN" + i, "Name", inp("mN" + i, m.name, 'maxlength="40"'))}${fld("mE" + i, "Electricity", inp("mE" + i, typeof m.elec === "number" ? pctTxt(m.elec) : m.elec, 'placeholder="1/3"'))}${fld("mW" + i, "Water", inp("mW" + i, typeof m.water === "number" ? pctTxt(m.water) : m.water, 'placeholder="1/3"'))}${fld("mI" + i, "Internet", inp("mI" + i, typeof m.internet === "number" ? pctTxt(m.internet) : m.internet, 'placeholder="1/2"'))}</div>`).join("");
+  if (!mates.length) mates.push({ name: "", rent: 50, elec: 33.33, water: 33.33, internet: 50 });
+  const rowsH = () => mates.map((m, i) => `<div class="grid2 mrow" style="grid-template-columns: 1.4fr 1fr 1fr 1fr 1fr; align-items:end">${fld("mN" + i, "Name", inp("mN" + i, m.name, 'maxlength="40"'))}${fld("mR" + i, "Rent", inp("mR" + i, typeof m.rent === "number" ? pctTxt(m.rent) : m.rent || "", 'placeholder="1/2"'))}${fld("mE" + i, "Electricity", inp("mE" + i, typeof m.elec === "number" ? pctTxt(m.elec) : m.elec, 'placeholder="1/3"'))}${fld("mW" + i, "Water", inp("mW" + i, typeof m.water === "number" ? pctTxt(m.water) : m.water, 'placeholder="1/3"'))}${fld("mI" + i, "Internet", inp("mI" + i, typeof m.internet === "number" ? pctTxt(m.internet) : m.internet, 'placeholder="1/2"'))}</div>`).join("");
   openSheet("Housemates & splits", `<p class="note">Each housemate's share of each bill. Type a fraction like <b>1/3</b> for an equal three-way split, or a percent like 40. Your share is whatever is left. Leave a name blank to remove that housemate.</p><div id="mRows" style="display:flex;flex-direction:column;gap:10px">${rowsH()}</div><div><button type="button" class="btn small" id="mAdd">Add housemate</button></div>`,
     async () => {
-      const out = mates.map((m, i) => ({ name: val("mN" + i).trim(), elec: parsePct(val("mE" + i)), water: parsePct(val("mW" + i)), internet: parsePct(val("mI" + i)) })).filter((m) => m.name);
-      if (["elec", "water", "internet"].some((k) => sum(out, (m) => sharePct(m[k])) > 100.0001)) return shErr("Housemate shares can't add up to more than the whole bill.");
+      const out = mates.map((m, i) => ({ name: val("mN" + i).trim(), rent: parsePct(val("mR" + i)), elec: parsePct(val("mE" + i)), water: parsePct(val("mW" + i)), internet: parsePct(val("mI" + i)) })).filter((m) => m.name);
+      if (["rent", "elec", "water", "internet"].some((k) => sum(out, (m) => sharePct(m[k])) > 100.0001)) return shErr("Housemate shares can't add up to more than the whole bill.");
       const st = Object.assign(clone(DEFAULT_SETTINGS), S.settings || {}); st.house = Object.assign({}, st.house, { mates: out });
       if (await act(() => store.saveSettings(st), "Splits saved")) closeSheet();
     });
-  $("mAdd").addEventListener("click", () => { mates.forEach((m, i) => { m.name = val("mN" + i); m.elec = val("mE" + i); m.water = val("mW" + i); m.internet = val("mI" + i); }); mates.push({ name: "", elec: 0, water: 0, internet: 0 }); $("mRows").innerHTML = rowsH(); });
+  $("mAdd").addEventListener("click", () => { mates.forEach((m, i) => { m.name = val("mN" + i); m.rent = val("mR" + i); m.elec = val("mE" + i); m.water = val("mW" + i); m.internet = val("mI" + i); }); mates.push({ name: "", rent: 0, elec: 0, water: 0, internet: 0 }); $("mRows").innerHTML = rowsH(); });
 }
 
 function sheetAcct(v, a) {
@@ -2133,6 +2139,8 @@ function parsePct(x) { const m = /^\s*1\s*\/\s*(\d+)\s*$/.exec(String(x || ""));
 const pctTxt = (p) => { const e = sharePct(p); for (let n = 2; n <= 10; n++) if (e === 100 / n) return "1/" + n; return String(Math.round((Number(p) || 0) * 100) / 100); };
 function mateBill(u, m) {
   const lines = [];
+  const rentT = r2(+u.rent || 0);
+  if (rentT > 0 && (m.rent || 0) > 0) lines.push({ k: "Rent", bill: rentT, fee: 0, total: rentT, pct: m.rent, share: r2(rentT * sharePct(m.rent) / 100), period: "", use: "" });
   const elecT = r2((+u.elec || 0) + (+u.elecFee || 0)), waterT = r2((+u.water || 0) + (+u.waterFee || 0)), net = r2(+u.internet || 0);
   if (elecT > 0 && (m.elec || 0) > 0) lines.push({ k: "Electricity", bill: +u.elec || 0, fee: +u.elecFee || 0, total: elecT, pct: m.elec, share: r2(elecT * sharePct(m.elec) / 100), period: u.elecPeriod || "", use: +u.kwh > 0 ? `${u.kwh} kWh × ${fmt(r2((+u.elec || 0) / (+u.kwh)))}/kWh` : "" });
   if (waterT > 0 && (m.water || 0) > 0) lines.push({ k: "Water", bill: +u.water || 0, fee: +u.waterFee || 0, total: waterT, pct: m.water, share: r2(waterT * sharePct(m.water) / 100), period: u.waterPeriod || "", use: +u.cum > 0 ? `${u.cum} cu.m. × ${fmt(r2((+u.water || 0) / (+u.cum)))}/cu.m.` : "" });
@@ -2141,7 +2149,7 @@ function mateBill(u, m) {
 }
 function billMessage(v, u, m) {
   const b = mateBill(u, m); const L = [];
-  L.push(`Utility bills · ${ymName(u.id)}`, `Hi ${m.name}, here's your share:`, "");
+  L.push(`${b.lines.some((l) => l.k === "Rent") ? "Rent & utilities" : "Utility bills"} · ${ymName(u.id)}`, `Hi ${m.name}, here's your share:`, "");
   b.lines.forEach((l) => {
     L.push(l.k + (l.period ? ` (${l.period})` : ""));
     if (l.fee) L.push(`${fmt(l.bill)} bill + ${fmt(l.fee)} fee = ${fmt(l.total)}`); else L.push(`Bill: ${fmt(l.total)}`);
@@ -2157,20 +2165,27 @@ function billingPanel(v) {
   const mates = (v.settings.house && v.settings.house.mates) || [];
   if (!mates.length) return "";
   const u = v.utilities.find((x) => x.id === S.month);
+  /* shares ticked as paid in older versions, with no money recorded anywhere */
+  const loose = v.utilities.flatMap((x) => mates.filter((m) => (x.paid || {})[m.name] && mateBill(x, m).total > 0 && !v.txns.some((t) => t.link && t.link.kind === "mateshare" && t.link.id === x.id + ":" + m.name)).map((m) => ({ x, m }))).filter((o) => !(u && o.x.id === u.id)).sort((p, q) => q.x.id.localeCompare(p.x.id));
+  const looseHtml = loose.length ? `<div class="callout" style="display:block;margin-top:10px"><b class="warn-t">${plural(loose.length, "earlier payment")} ${loose.length === 1 ? "isn't" : "aren't"} in any account.</b> Marked paid, but the money was never added to an account. Tap to choose where it went.<div class="chips" style="margin-top:8px">${loose.slice(0, 12).map((o) => `<button type="button" class="chip warn" data-act="billing" data-name="${esc(o.m.name)}" data-month="${esc(o.x.id)}">${esc(o.m.name)} · ${esc(ymShort(o.x.id))}<small>${fmt(mateBill(o.x, o.m).total)}</small></button>`).join("")}</div></div>` : "";
   return `<section class="panel">
     <div class="phead"><h2>Housemate billing · ${esc(ymName(S.month))}</h2>${u && u.payBy ? `<span class="eyebrow">Pay by ${esc(dShort(u.payBy))}</span>` : ""}</div>
-    ${u ? `<div class="rows">${mates.map((m) => { const b = mateBill(u, m); const paid = (u.paid || {})[m.name]; return `<button type="button" class="row ${paid ? "st-paid" : "st-soon"}" data-act="billing" data-name="${esc(m.name)}"><span class="bar6"></span><span style="min-width:0"><span class="t" style="display:block">${esc(m.name)}</span><span class="m" style="display:block">${esc(b.lines.map((l) => l.k + " " + fmt(l.share)).join(" · ") || "No shared bills this month")}</span></span><span class="r"><span class="amt">${fmt(b.total)}</span><span class="pill ${paid ? "paid" : "soon"}">${paid ? "Paid" : "Unpaid"}</span></span></button>`; }).join("")}</div><p class="note" style="margin-top:8px">Tap a name to see the computation, copy it as a message, or mark it paid.</p>`
-      : `<div class="empty"><strong>No utility bills logged for ${esc(ymName(S.month))}</strong>Log this month's bills to bill your housemates. <button type="button" class="btn small primary" data-act="newutil" style="margin-top:8px">Log ${esc(ymName(S.month, { month: "long" }))}</button></div>`}
+    ${u ? `<div class="rows">${mates.map((m) => { const b = mateBill(u, m); const paid = (u.paid || {})[m.name]; const inc = v.txns.find((t) => t.link && t.link.kind === "mateshare" && t.link.id === u.id + ":" + m.name); return `<button type="button" class="row ${paid ? "st-paid" : "st-soon"}" data-act="billing" data-name="${esc(m.name)}" data-month="${esc(u.id)}"><span class="bar6"></span><span style="min-width:0"><span class="t" style="display:block">${esc(m.name)}</span><span class="m" style="display:block">${esc(b.lines.map((l) => l.k + " " + fmt(l.share)).join(" · ") || "No shared bills this month")}</span></span><span class="r"><span class="amt">${fmt(b.total)}</span><span class="pill ${paid ? (inc ? "paid" : "soon") : "soon"}">${paid ? (inc ? "Paid to " + esc(acctName(v, inc.account)) : "Paid · not in an account") : "Unpaid"}</span></span></button>`; }).join("")}</div><p class="note" style="margin-top:8px">Tap a name to see the computation, copy it as a message, or mark it paid.</p>${looseHtml}`
+      : `<div class="empty"><strong>No utility bills logged for ${esc(ymName(S.month))}</strong>Log this month's bills to bill your housemates. <button type="button" class="btn small primary" data-act="newutil" style="margin-top:8px">Log ${esc(ymName(S.month, { month: "long" }))}</button></div>`}${u ? "" : looseHtml}
   </section>`;
 }
-function sheetBilling(v, name) {
+function sheetBilling(v, name, month) {
   const m = ((v.settings.house && v.settings.house.mates) || []).find((x) => x.name === name);
-  const u = v.utilities.find((x) => x.id === S.month);
+  const u = v.utilities.find((x) => x.id === (month || S.month));
   if (!m || !u) return;
   const b = mateBill(u, m); const paid = !!(u.paid || {})[m.name];
   const key = u.id + ":" + m.name; BILLCTX = { u, m };
   const inc = v.txns.find((t) => t.link && t.link.kind === "mateshare" && t.link.id === key);
-  const defAcct = (v.settings.house && v.settings.house.payAcct) || (v.settings.salary && v.settings.salary.account) || "";
+  /* where housemate money usually lands: last account used, else your salary account, else your first bank or e-wallet */
+  const okAcct = (id) => v.settings.accounts.some((a) => a.id === id && ["bank", "ewallet", "cash"].includes(a.type));
+  const h0 = v.settings.house || {};
+  const defAcct = [h0.payAcct, v.settings.salary && v.settings.salary.account, (v.settings.accounts.find((a) => ["bank", "ewallet"].includes(a.type)) || {}).id].find(okAcct) || "";
+  const noAcct = paid && !inc;
   openSheet(`${m.name} · ${ymName(u.id)}`, `
     <div class="bill">
       ${b.lines.map((l) => `<div class="bill-line">
@@ -2183,12 +2198,13 @@ function sheetBilling(v, name) {
     </div>
     <div class="field"><label for="bMsg">Message to send</label><textarea id="bMsg" rows="9">${esc(billMessage(v, u, m))}</textarea>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px"><button type="button" class="btn small primary" data-act="billimg">Save as image</button><button type="button" class="btn small" data-act="billpdf">Save as PDF</button><button type="button" class="btn small" data-act="copybill">Copy message</button><button type="button" class="btn small" data-act="sharebill" id="bShare" hidden>Share message…</button></div><div id="bOut" class="bout"></div></div>
-    ${paid ? `<p class="callout" style="display:block"><b class="pos">Paid</b> ${inc ? `· ${fmt(inc.amount)} received in ${esc(acctName(v, inc.account))} on ${esc(dShort(inc.date))}` : ""}</p>`
-      : `<div class="grid2">${fld("bAcct", "Received in", `<select id="bAcct"><option value="">Don't record in an account</option>${acctOpts(v, defAcct, (a) => ["bank", "ewallet", "cash"].includes(a.type))}</select>`)}${fld("bDate", "Received on", inp("bDate", todayStr(), 'type="date"'))}</div>`}`,
+    ${paid && inc ? `<p class="callout" style="display:block"><b class="pos">Paid</b> · ${fmt(inc.amount)} received in ${esc(acctName(v, inc.account))} on ${esc(dShort(inc.date))}</p>`
+      : `${noAcct ? `<p class="callout" style="display:block"><b class="warn-t">Marked paid, but the money isn't in any of your accounts yet.</b> Choose where ${esc(m.name)}'s ${fmt(b.total)} went so that account's balance is right.</p>` : ""}
+      <div class="grid2">${fld("bAcct", "Received in", `<select id="bAcct">${acctOpts(v, defAcct, (a) => ["bank", "ewallet", "cash"].includes(a.type))}<option value="">Don't put it in an account</option></select>`)}${fld("bDate", "Received on", inp("bDate", noAcct ? (u.payBy && u.payBy <= todayStr() ? u.payBy : todayStr()) : todayStr(), 'type="date"'))}</div>`}`,
     async () => {
       const nu = Object.assign({}, u, { paid: Object.assign({}, u.paid || {}) });
       const ok = await act(async () => {
-        if (paid) {
+        if (paid && !noAcct) {
           delete nu.paid[m.name]; await store.put("utilities", nu); if (inc) await store.del("txns", inc.id);
         } else {
           nu.paid[m.name] = true; await store.put("utilities", nu);
@@ -2197,10 +2213,11 @@ function sheetBilling(v, name) {
           const h = (v.settings.house) || {};
           if (acct !== (h.payAcct || "")) { const st = Object.assign(clone(DEFAULT_SETTINGS), S.settings || {}); st.house = Object.assign({}, st.house, { payAcct: acct }); await store.saveSettings(st); }
         }
-      }, paid ? "Marked unpaid" : `${m.name} marked paid`);
+      }, paid && !noAcct ? "Marked unpaid" : `${m.name}'s ${fmt(b.total)}` + (val("bAcct") ? " added to " + acctName(v, val("bAcct")) : " marked paid"));
       if (ok) closeSheet();
-    });
-  $("shSave").textContent = paid ? "Mark as unpaid" : "Mark as paid";
+    }, noAcct ? `<button type="button" class="btn ghost" data-act="sheetdel" id="shDel">Mark as unpaid</button>` : "");
+  $("shSave").textContent = paid && !noAcct ? "Mark as unpaid" : noAcct ? "Add to account" : "Mark as paid";
+  sheetDelete = noAcct ? async () => { const nu = Object.assign({}, u, { paid: Object.assign({}, u.paid || {}) }); delete nu.paid[m.name]; if (await act(() => store.put("utilities", nu), "Marked unpaid")) closeSheet(); } : null;
   if (navigator.share) $("bShare").hidden = false;
 }
 
@@ -2227,7 +2244,7 @@ async function billCanvas(u, m) {
   x.fillStyle = C.paper; x.fillRect(0, 0, W, H);
   x.fillStyle = C.band; x.fillRect(0, 0, W, BAND);
   x.fillStyle = C.pear; x.fillRect(P, 48, 34, 10);
-  x.fillStyle = C.muted; x.font = F(700, 16); x.fillText("UTILITY BILL", P + 48, 58);
+  x.fillStyle = C.muted; x.font = F(700, 16); x.fillText(b.lines.some((l) => l.k === "Rent") ? "RENT & UTILITIES" : "UTILITY BILL", P + 48, 58);
   x.fillStyle = C.title; x.font = F(700, 44); x.fillText(ymName(u.id), P, 122);
   x.fillStyle = C.ink; x.font = F(500, 26); x.fillText("For " + m.name, P, 168);
   let y = BAND + 30;
@@ -2300,7 +2317,7 @@ async function exportCanvas(kind, make, base, acts) {
   } catch (e) { toast((e && e.message) || "Couldn't make the file. Try again."); }
   finally { if (btn) btn.disabled = false; }
 }
-function billExport(kind) { if (!BILLCTX) return; const { u, m } = BILLCTX; return exportCanvas(kind, () => billCanvas(u, m), `Utilities ${ymName(u.id)} - ${m.name}`, ["billimg", "billpdf"]); }
+function billExport(kind) { if (!BILLCTX) return; const { u, m } = BILLCTX; return exportCanvas(kind, () => billCanvas(u, m), `${+u.rent > 0 ? "Rent and utilities" : "Utilities"} ${ymName(u.id)} - ${m.name}`, ["billimg", "billpdf"]); }
 function ledgerExport(kind) { if (!LEDGERCTX) return; const p = (V().people.find((x) => x.id === LEDGERCTX.p.id)) || LEDGERCTX.p; return exportCanvas(kind, () => ledgerCanvas(p), `Statement ${todayStr()} - ${p.name}`, ["ledgerimg", "ledgerpdf"]); }
 
 /* ============ insurance premiums (PRU Life VUL and the like) ============ */
@@ -3186,7 +3203,7 @@ document.addEventListener("click", async (e) => {
     case "newacct": sheetAcct(v, null); break;
     case "budgets": sheetBudgets(v); break;
     case "reimbnew": sheetReimb(v, null); break;
-    case "billing": sheetBilling(v, el.dataset.name); break;
+    case "billing": sheetBilling(v, el.dataset.name, el.dataset.month); break;
     case "billimg": billExport("img"); break;
     case "billpdf": billExport("pdf"); break;
     case "copybill": { const ta = $("bMsg"); if (!ta) break; try { await navigator.clipboard.writeText(ta.value); toast("Message copied. Paste it in Messenger or Viber."); } catch (err) { ta.focus(); ta.select(); toast("Selected. Press Cmd+C (or Copy) to copy it."); } break; }
@@ -3230,7 +3247,14 @@ document.addEventListener("submit", async (e) => {
     if (!v.demo && !v.settings.accounts.length) return err("Add an account first in the Accounts tab.");
     if (v.demo) return toast("These are samples. Tap “Start my ledger” at the top first.");
     const t = { id: newId("t"), date: val("qDate") || todayStr(), type: "expense", amount, account: val("qAcct"), category: S.dayCat, note: val("qNote").trim(), to: "", link: null, createdAt: Date.now() };
-    if (await act(() => store.put("txns", t), fmt(amount) + " · " + S.dayCat + " added")) { const q = $("qAmt"); if (q) { q.value = ""; q.focus(); } if ($("qNote")) $("qNote").value = ""; }
+    S.flashId = t.id;
+    if (await act(() => store.put("txns", t), fmt(amount) + " · " + S.dayCat + " added")) {
+      if ($("qNote")) $("qNote").value = "";
+      const q = $("qAmt"); if (q) q.value = "";
+      /* phones: close the keyboard and bring the new entry into view; computers: ready for the next one */
+      if (window.innerWidth < 900) { if (document.activeElement) document.activeElement.blur(); } else if (q) q.focus();
+      showFlash();
+    }
   }
 });
 document.addEventListener("click", (e) => { const c = e.target.closest("#qCats button"); if (!c) return; S.dayCat = c.dataset.cat; document.querySelectorAll("#qCats button").forEach((b) => b.setAttribute("aria-pressed", String(b === c))); });
@@ -3241,11 +3265,19 @@ document.addEventListener("keydown", (e) => {
 });
 $("prevM").addEventListener("click", () => { S.month = shiftYM(S.month, -1); render(); });
 $("nextM").addEventListener("click", () => { S.month = shiftYM(S.month, 1); render(); });
-$("fab").addEventListener("click", () => { location.hash = "daily"; setTimeout(() => $("qAmt") && $("qAmt").focus(), 50); });
+$("fab").addEventListener("click", () => {
+  location.hash = "daily";
+  /* land on the form itself, with the newest entries right under it */
+  setTimeout(() => { const qp = $("quickPanel"); if (qp) { const top = qp.getBoundingClientRect().top + window.scrollY - 64; window.scrollTo(0, Math.max(0, top)); } const q = $("qAmt"); if (q) q.focus({ preventScroll: true }); }, 60);
+});
 function fromHash() { const h = (location.hash || "").replace("#", ""); S.tab = TABS.some(([k]) => k === h) ? h : "overview"; if (S.mode === "ready") render(); }
 window.addEventListener("hashchange", () => { if (/access_token=|error=/.test(location.hash)) return; fromHash(); window.scrollTo(0, 0); });
 
 let toastT = 0;
+function showFlash() {
+  setTimeout(() => { const r = document.querySelector(".row.flash"); if (r) r.scrollIntoView({ behavior: "smooth", block: window.innerWidth < 900 ? "center" : "nearest" }); }, 60);
+  clearTimeout(showFlash.t); showFlash.t = setTimeout(() => { S.flashId = null; document.querySelectorAll(".row.flash").forEach((r) => r.classList.remove("flash")); }, 3200);
+}
 function toast(m) { const t = $("toast"); t.textContent = m; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => (t.hidden = true), 3000); }
 
 let wasNarrow = window.innerWidth < 560;
