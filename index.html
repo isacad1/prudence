@@ -1716,7 +1716,7 @@ function sheetMates(v) {
   const rowsH = () => mates.map((m, i) => `<div class="grid2 mrow" style="grid-template-columns: 1.4fr 1fr 1fr 1fr 1fr; align-items:end">${fld("mN" + i, "Name", inp("mN" + i, m.name, 'maxlength="40"'))}${fld("mR" + i, "Rent", inp("mR" + i, typeof m.rent === "number" ? pctTxt(m.rent) : m.rent || "", 'placeholder="1/2"'))}${fld("mE" + i, "Electricity", inp("mE" + i, typeof m.elec === "number" ? pctTxt(m.elec) : m.elec, 'placeholder="1/3"'))}${fld("mW" + i, "Water", inp("mW" + i, typeof m.water === "number" ? pctTxt(m.water) : m.water, 'placeholder="1/3"'))}${fld("mI" + i, "Internet", inp("mI" + i, typeof m.internet === "number" ? pctTxt(m.internet) : m.internet, 'placeholder="1/2"'))}</div>`).join("");
   openSheet("Housemates & splits", `<p class="note">Each housemate's share of each bill. Type a fraction like <b>1/3</b> for an equal three-way split, or a percent like 40. Your share is whatever is left. Leave a name blank to remove that housemate.</p><div id="mRows" style="display:flex;flex-direction:column;gap:10px">${rowsH()}</div><div><button type="button" class="btn small" id="mAdd">Add housemate</button></div>`,
     async () => {
-      const out = mates.map((m, i) => ({ name: val("mN" + i).trim(), rent: parsePct(val("mR" + i)), elec: parsePct(val("mE" + i)), water: parsePct(val("mW" + i)), internet: parsePct(val("mI" + i)) })).filter((m) => m.name);
+      const out = mates.map((m, i) => ({ name: val("mN" + i).trim(), noRent: parsePct(val("mR" + i)) > 0 ? false : !!m.noRent, rent: parsePct(val("mR" + i)), elec: parsePct(val("mE" + i)), water: parsePct(val("mW" + i)), internet: parsePct(val("mI" + i)) })).filter((m) => m.name);
       if (["rent", "elec", "water", "internet"].some((k) => sum(out, (m) => sharePct(m[k])) > 100.0001)) return shErr("Housemate shares can't add up to more than the whole bill.");
       const st = Object.assign(clone(DEFAULT_SETTINGS), S.settings || {}); st.house = Object.assign({}, st.house, { mates: out });
       if (await act(() => store.saveSettings(st), "Splits saved")) closeSheet();
@@ -2174,6 +2174,26 @@ function billingPanel(v) {
       : `<div class="empty"><strong>No utility bills logged for ${esc(ymName(S.month))}</strong>Log this month's bills to bill your housemates. <button type="button" class="btn small primary" data-act="newutil" style="margin-top:8px">Log ${esc(ymName(S.month, { month: "long" }))}</button></div>`}${u ? "" : looseHtml}
   </section>`;
 }
+function lastRent(v, beforeId) { const r = v.utilities.filter((x) => +x.rent > 0 && (!beforeId || x.id !== beforeId)).sort((a, b) => b.id.localeCompare(a.id))[0]; return r ? +r.rent : 0; }
+function rentBox(v, u, m) {
+  if (m.noRent) return "";
+  const needAmt = !(+u.rent > 0), needSplit = !(Number(m.rent) > 0);
+  if (!needAmt && !needSplit) return "";
+  return `<div class="callout rentbox" style="display:block"><b>Rent isn't on ${esc(m.name)}'s bill${needAmt ? ` for ${esc(ymName(u.id, { month: "long" }))}` : ""} yet.</b>
+    <div class="grid2" style="margin-top:8px">${needAmt ? fld("brRent", "Rent for " + ymName(u.id, { month: "long" }), money("brRent", lastRent(v, u.id) || "")) : ""}${needSplit ? fld("brShare", m.name + "'s share of rent", inp("brShare", "1/2", 'placeholder="1/2"')) : ""}</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn small primary" data-act="billrent" data-name="${esc(m.name)}" data-month="${esc(u.id)}">Add rent to this bill</button><button type="button" class="btn small ghost" data-act="billnorent" data-name="${esc(m.name)}" data-month="${esc(u.id)}">${esc(m.name)} doesn't share rent</button></div></div>`;
+}
+async function addRent(v, name, month) {
+  const u = v.utilities.find((x) => x.id === month); const m = ((v.settings.house && v.settings.house.mates) || []).find((x) => x.name === name); if (!u || !m) return;
+  const amt = $("brRent") ? num(val("brRent")) : +u.rent; const share = $("brShare") ? parsePct(val("brShare")) : Number(m.rent);
+  if (!(amt > 0)) { shErr("Enter the month's rent."); return; }
+  if (!(share > 0 && share <= 100)) { shErr("Enter " + name + "'s share, like 1/2."); return; }
+  const ok = await act(async () => {
+    if (!(+u.rent > 0) || +u.rent !== amt) await store.put("utilities", Object.assign({}, u, { rent: amt }));
+    if (Number(m.rent) !== share) { const st = Object.assign(clone(DEFAULT_SETTINGS), S.settings || {}); st.house = Object.assign({}, st.house, { mates: (st.house.mates || []).map((x) => (x.name === name ? Object.assign({}, x, { rent: share, noRent: false }) : x)) }); await store.saveSettings(st); }
+  }, "Rent added to " + name + "'s bill");
+  if (ok) sheetBilling(V(), name, month);
+}
 function sheetBilling(v, name, month) {
   const m = ((v.settings.house && v.settings.house.mates) || []).find((x) => x.name === name);
   const u = v.utilities.find((x) => x.id === (month || S.month));
@@ -2186,7 +2206,10 @@ function sheetBilling(v, name, month) {
   const h0 = v.settings.house || {};
   const defAcct = [h0.payAcct, v.settings.salary && v.settings.salary.account, (v.settings.accounts.find((a) => ["bank", "ewallet"].includes(a.type)) || {}).id].find(okAcct) || "";
   const noAcct = paid && !inc;
+  const stale = paid && inc && Math.abs((+inc.amount || 0) - b.total) >= 0.01;
   openSheet(`${m.name} · ${ymName(u.id)}`, `
+    ${rentBox(v, u, m)}
+    ${stale ? `<div class="callout" style="display:block"><b class="warn-t">The bill is now ${fmt(b.total)}, but ${fmt(inc.amount)} was recorded in ${esc(acctName(v, inc.account))}.</b> If ${esc(m.name)} paid the full amount, update it so your balance is right.<div style="margin-top:8px"><button type="button" class="btn small primary" data-act="billfix" data-name="${esc(m.name)}" data-month="${esc(u.id)}">Update to ${fmt(b.total)}</button></div></div>` : ""}
     <div class="bill">
       ${b.lines.map((l) => `<div class="bill-line">
         <div class="bill-k"><b>${l.k}</b>${l.period ? `<span class="note"> · ${esc(l.period)}</span>` : ""}</div>
@@ -3204,6 +3227,9 @@ document.addEventListener("click", async (e) => {
     case "budgets": sheetBudgets(v); break;
     case "reimbnew": sheetReimb(v, null); break;
     case "billing": sheetBilling(v, el.dataset.name, el.dataset.month); break;
+    case "billrent": await addRent(v, el.dataset.name, el.dataset.month); break;
+    case "billnorent": { const name = el.dataset.name, month = el.dataset.month; const st = Object.assign(clone(DEFAULT_SETTINGS), S.settings || {}); st.house = Object.assign({}, st.house, { mates: (st.house.mates || []).map((x) => (x.name === name ? Object.assign({}, x, { rent: 0, noRent: true }) : x)) }); if (await act(() => store.saveSettings(st), "Okay, no rent for " + name)) sheetBilling(V(), name, month); break; }
+    case "billfix": { const u = v.utilities.find((x) => x.id === el.dataset.month); const m = ((v.settings.house && v.settings.house.mates) || []).find((x) => x.name === el.dataset.name); const inc = u && m && v.txns.find((t) => t.link && t.link.kind === "mateshare" && t.link.id === u.id + ":" + m.name); if (inc) { const tot = mateBill(u, m).total; if (await act(() => store.put("txns", Object.assign({}, inc, { amount: tot })), "Updated to " + fmt(tot) + " in " + acctName(v, inc.account))) sheetBilling(V(), m.name, u.id); } break; }
     case "billimg": billExport("img"); break;
     case "billpdf": billExport("pdf"); break;
     case "copybill": { const ta = $("bMsg"); if (!ta) break; try { await navigator.clipboard.writeText(ta.value); toast("Message copied. Paste it in Messenger or Viber."); } catch (err) { ta.focus(); ta.select(); toast("Selected. Press Cmd+C (or Copy) to copy it."); } break; }
