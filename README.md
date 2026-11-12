@@ -29,6 +29,10 @@ Live site: https://isacad1.github.io/prudence/
 
 Prudence asks only for `drive.file`: it can see and edit files it created itself, nothing else in your Drive.
 
+## Salary and payslip
+
+On the Salary tab, **Your payslip** holds your pay structure: position, grade and step, each earning per payday (basic pay, PERA, rice allowance, medical…), the regular deductions (GSIS, Pag-IBIG, PhilHealth, withholding tax, plus any regular coop or HMO), your employer's monthly share, yearly bonuses with the month they usually arrive, and notes such as leave credits. It also sets your two paydays (for example the 10th and 25th); bill and loan cutoffs follow them across the app. **Log payday** fills in every line from the payslip, shows whether the take-home matches it, and has fields for one-offs like tardiness or a coop loan. Bonuses can be logged in one tap, and bonuses due before a debt-free date are shown in the goal plan.
+
 ## Receipts
 
 Bill payments, utility months and work expenses can have receipts attached (photos, screenshots or PDFs). Photos are shrunk before upload. Files are saved in a **Prudence Receipts** folder in your Google Drive and linked from the sheet.

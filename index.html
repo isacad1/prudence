@@ -301,6 +301,10 @@ button.rrow { cursor: pointer; } button.rrow:hover { background: var(--surface-2
 @keyframes flashrow { 0%, 35% { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--accent); } 100% { background: transparent; box-shadow: none; } }
 @media (prefers-reduced-motion: reduce) { .row.flash { animation: none; background: var(--accent-soft); } }
 @media (max-width: 560px) { .mrow { grid-template-columns: 1fr 1fr !important; } .mrow > .field:first-child { grid-column: 1 / -1; } }
+.slip .eq.big { font-size: 1.05rem; } .slip .eq.big b { color: var(--income); }
+.prow .field { margin-bottom: 4px; } .prow > .btn { margin-bottom: 8px; }
+@media (max-width: 560px) { .prow { grid-template-columns: 1fr 1fr auto !important; } .prow > .field:first-child { grid-column: 1 / -1; } }
+.linkbtn { border: 0; background: none; padding: 0; font: inherit; font-size: inherit; color: var(--accent); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
 .bout { margin-top: 8px; } .bout img { width: 100%; max-width: 420px; border: 1px solid var(--line); border-radius: 10px; display: block; margin-bottom: 6px; }
 .vlist { display: flex; flex-direction: column; gap: 18px; }
 .vcard + .vcard { border-top: 1px dashed var(--line); padding-top: 16px; }
@@ -439,8 +443,8 @@ const ymShort = (ym) => ymName(ym, { month: "short" });
 const dLabel = (d) => { const [y, m, dd] = d.split("-").map(Number); return new Date(y, m - 1, dd).toLocaleDateString("en-PH", { weekday: "short", month: "short", day: "numeric" }); };
 const dShort = (d) => { const [y, m, dd] = d.split("-").map(Number); return new Date(y, m - 1, dd).toLocaleDateString("en-PH", { month: "short", day: "numeric" }); };
 const daysBetween = (a, b) => { const p = (s) => { const [y, m, d] = s.split("-").map(Number); return Date.UTC(y, m - 1, d); }; return Math.round((p(b) - p(a)) / 86400000); };
-const dueDate = (ym, cyc) => ym + "-" + (cyc === "A" ? "15" : pad(lastDay(ym)));
-const CYC = { A: "15th", B: "30th", AB: "15th & 30th" };
+const dueDate = (ym, cyc) => payDate(ym, cyc);
+const CYC = { get A() { return cutName("A"); }, get B() { return cutName("B"); }, get AB() { return cutName("AB"); } };
 const plural = (n, w) => n + " " + w + (n === 1 ? "" : "s");
 const clone = (o) => JSON.parse(JSON.stringify(o));
 const sum = (a, f) => a.reduce((s, x) => s + (f ? f(x) : x), 0);
@@ -505,7 +509,7 @@ const auth = {
 };
 
 /* ============ Google Sheets + Drive APIs ============ */
-const SCHEMA = {"Transactions": {"sheet": "Transactions", "cols": [["id", "ID", "text"], ["date", "Date", "date"], ["type", "Type", "text"], ["category", "Category", "text"], ["amount", "Amount (PHP)", "money"], ["account", "Account ID", "text"], ["accountName", "Account", "text"], ["to", "To account ID", "text"], ["toName", "To account", "text"], ["note", "Note", "text"], ["linkKind", "Linked to", "text"], ["linkId", "Linked ID", "text"], ["period", "Cutoff", "text"], ["gross", "Gross pay", "money"], ["tax", "Withholding tax", "money"], ["hmo", "HMO", "money"], ["equity", "Coop equity", "money"], ["coop", "Coop loan", "money"], ["tardy", "Tardy & undertime", "money"], ["absent", "Absences", "money"], ["other", "Other deductions", "money"], ["createdAt", "Created", "int"], ["receipts", "Receipts", "text"]]}, "Bills": {"sheet": "Bills", "cols": [["id", "ID", "text"], ["name", "Bill", "text"], ["amount", "Usual amount (PHP)", "money"], ["cycle", "Cutoff", "text"], ["category", "Category", "text"], ["payTo", "Pays account ID", "text"], ["payToName", "Pays account", "text"], ["active", "Active", "text"]]}, "Loans": {"sheet": "Loans", "cols": [["id", "ID", "text"], ["name", "Loan", "text"], ["lender", "Lender", "text"], ["balance", "Balance (PHP)", "money"], ["asOf", "Balance as of", "date"], ["payment", "Payment each due (PHP)", "money"], ["cycle", "Due on", "text"], ["left", "Payments left", "int"], ["original", "Original total (PHP)", "money"]]}, "Accounts": {"sheet": "Accounts", "cols": [["id", "ID", "text"], ["name", "Account", "text"], ["type", "Type", "text"], ["opening", "Opening balance (PHP)", "money"]]}, "People": {"sheet": "Owed to me", "cols": [["id", "ID", "text"], ["name", "Person", "text"], ["start", "Owed at start (PHP)", "money"], ["startDate", "As of", "date"]]}, "OwedEntries": {"sheet": "Owed history", "cols": [["id", "ID", "text"], ["personId", "Person ID", "text"], ["personName", "Person", "text"], ["d", "Date", "date"], ["k", "Entry", "text"], ["a", "Amount (PHP)", "money"], ["n", "Note", "text"]]}, "Utilities": {"sheet": "Utilities", "cols": [["id", "Month", "month"], ["elec", "Electricity (PHP)", "money"], ["kwh", "kWh", "num"], ["elecFee", "Electricity fee (PHP)", "money"], ["water", "Water (PHP)", "money"], ["cum", "cu.m.", "num"], ["waterFee", "Water fee (PHP)", "money"], ["internet", "Internet (PHP)", "money"], ["paid", "Housemates paid", "text"], ["receipts", "Receipts", "text"], ["elecPeriod", "Electricity period", "text"], ["waterPeriod", "Water period", "text"], ["payBy", "Housemates pay by", "date"], ["rent", "Rent (PHP)", "money"]]}, "Settings": {"sheet": "Settings", "cols": [["key", "Key", "text"], ["value", "Value", "text"]]}, "Reimb": {"sheet": "Reimbursements", "cols": [["id", "ID", "text"], ["date", "Date", "date"], ["event", "Meeting / event", "text"], ["vendor", "Purchased from", "text"], ["rtype", "Type", "text"], ["amount", "Amount (PHP)", "money"], ["account", "Paid from ID", "text"], ["accountName", "Paid from", "text"], ["headcount", "Headcount", "int"], ["attendees", "Staff attendees", "text"], ["receipts", "Receipts", "text"], ["claimed", "Claimed", "text"], ["claimedDate", "Claimed on", "date"], ["received", "Received (PHP)", "money"], ["toAccount", "Received in ID", "text"], ["toAccountName", "Received in", "text"], ["outcome", "Excess outcome", "text"], ["staffShare", "Each staff share (PHP)", "money"], ["myShare", "My share (PHP)", "money"], ["staffEntries", "Staff charge IDs", "text"]]}, "Values": {"sheet": "Account values", "cols": [["id", "ID", "text"], ["accountId", "Account ID", "text"], ["accountName", "Account", "text"], ["date", "As of", "date"], ["value", "Value (PHP)", "money"], ["note", "Note", "text"]]}, "Premiums": {"sheet": "Premiums", "cols": [["id", "ID", "text"], ["accountId", "Account ID", "text"], ["accountName", "Policy / account", "text"], ["date", "Paid on", "date"], ["amount", "Premium (PHP)", "money"], ["from", "Paid from ID", "text"], ["fromName", "Paid from", "text"], ["note", "Note", "text"]]}, "Shop": {"sheet": "Shopping list", "cols": [["id", "ID", "text"], ["name", "Item", "text"], ["cat", "Category", "text"], ["qty", "Qty", "num"], ["unit", "Unit", "text"], ["est", "Price each (PHP)", "money"], ["store", "Store", "text"], ["need", "On list", "text"], ["cart", "In cart", "text"], ["paid", "Paid (PHP)", "money"], ["lastPrice", "Last price", "money"], ["prevPrice", "Price before", "money"], ["lastDate", "Last bought", "date"], ["lastStore", "Last store", "text"], ["every", "Every (days)", "int"], ["note", "Note", "text"]]}};
+const SCHEMA = {"Transactions": {"sheet": "Transactions", "cols": [["id", "ID", "text"], ["date", "Date", "date"], ["type", "Type", "text"], ["category", "Category", "text"], ["amount", "Amount (PHP)", "money"], ["account", "Account ID", "text"], ["accountName", "Account", "text"], ["to", "To account ID", "text"], ["toName", "To account", "text"], ["note", "Note", "text"], ["linkKind", "Linked to", "text"], ["linkId", "Linked ID", "text"], ["period", "Cutoff", "text"], ["gross", "Gross pay", "money"], ["tax", "Withholding tax", "money"], ["hmo", "HMO", "money"], ["equity", "Coop equity", "money"], ["coop", "Coop loan", "money"], ["tardy", "Tardy & undertime", "money"], ["absent", "Absences", "money"], ["other", "Other deductions", "money"], ["createdAt", "Created", "int"], ["receipts", "Receipts", "text"], ["gsis", "GSIS", "money"], ["hdmf", "Pag-IBIG (HDMF)", "money"], ["phic", "PhilHealth", "money"], ["earn", "Earnings breakdown", "text"]]}, "Bills": {"sheet": "Bills", "cols": [["id", "ID", "text"], ["name", "Bill", "text"], ["amount", "Usual amount (PHP)", "money"], ["cycle", "Cutoff", "text"], ["category", "Category", "text"], ["payTo", "Pays account ID", "text"], ["payToName", "Pays account", "text"], ["active", "Active", "text"]]}, "Loans": {"sheet": "Loans", "cols": [["id", "ID", "text"], ["name", "Loan", "text"], ["lender", "Lender", "text"], ["balance", "Balance (PHP)", "money"], ["asOf", "Balance as of", "date"], ["payment", "Payment each due (PHP)", "money"], ["cycle", "Due on", "text"], ["left", "Payments left", "int"], ["original", "Original total (PHP)", "money"]]}, "Accounts": {"sheet": "Accounts", "cols": [["id", "ID", "text"], ["name", "Account", "text"], ["type", "Type", "text"], ["opening", "Opening balance (PHP)", "money"]]}, "People": {"sheet": "Owed to me", "cols": [["id", "ID", "text"], ["name", "Person", "text"], ["start", "Owed at start (PHP)", "money"], ["startDate", "As of", "date"]]}, "OwedEntries": {"sheet": "Owed history", "cols": [["id", "ID", "text"], ["personId", "Person ID", "text"], ["personName", "Person", "text"], ["d", "Date", "date"], ["k", "Entry", "text"], ["a", "Amount (PHP)", "money"], ["n", "Note", "text"]]}, "Utilities": {"sheet": "Utilities", "cols": [["id", "Month", "month"], ["elec", "Electricity (PHP)", "money"], ["kwh", "kWh", "num"], ["elecFee", "Electricity fee (PHP)", "money"], ["water", "Water (PHP)", "money"], ["cum", "cu.m.", "num"], ["waterFee", "Water fee (PHP)", "money"], ["internet", "Internet (PHP)", "money"], ["paid", "Housemates paid", "text"], ["receipts", "Receipts", "text"], ["elecPeriod", "Electricity period", "text"], ["waterPeriod", "Water period", "text"], ["payBy", "Housemates pay by", "date"], ["rent", "Rent (PHP)", "money"]]}, "Settings": {"sheet": "Settings", "cols": [["key", "Key", "text"], ["value", "Value", "text"]]}, "Reimb": {"sheet": "Reimbursements", "cols": [["id", "ID", "text"], ["date", "Date", "date"], ["event", "Meeting / event", "text"], ["vendor", "Purchased from", "text"], ["rtype", "Type", "text"], ["amount", "Amount (PHP)", "money"], ["account", "Paid from ID", "text"], ["accountName", "Paid from", "text"], ["headcount", "Headcount", "int"], ["attendees", "Staff attendees", "text"], ["receipts", "Receipts", "text"], ["claimed", "Claimed", "text"], ["claimedDate", "Claimed on", "date"], ["received", "Received (PHP)", "money"], ["toAccount", "Received in ID", "text"], ["toAccountName", "Received in", "text"], ["outcome", "Excess outcome", "text"], ["staffShare", "Each staff share (PHP)", "money"], ["myShare", "My share (PHP)", "money"], ["staffEntries", "Staff charge IDs", "text"]]}, "Values": {"sheet": "Account values", "cols": [["id", "ID", "text"], ["accountId", "Account ID", "text"], ["accountName", "Account", "text"], ["date", "As of", "date"], ["value", "Value (PHP)", "money"], ["note", "Note", "text"]]}, "Premiums": {"sheet": "Premiums", "cols": [["id", "ID", "text"], ["accountId", "Account ID", "text"], ["accountName", "Policy / account", "text"], ["date", "Paid on", "date"], ["amount", "Premium (PHP)", "money"], ["from", "Paid from ID", "text"], ["fromName", "Paid from", "text"], ["note", "Note", "text"]]}, "Shop": {"sheet": "Shopping list", "cols": [["id", "ID", "text"], ["name", "Item", "text"], ["cat", "Category", "text"], ["qty", "Qty", "num"], ["unit", "Unit", "text"], ["est", "Price each (PHP)", "money"], ["store", "Store", "text"], ["need", "On list", "text"], ["cart", "In cart", "text"], ["paid", "Paid (PHP)", "money"], ["lastPrice", "Last price", "money"], ["prevPrice", "Price before", "money"], ["lastDate", "Last bought", "date"], ["lastStore", "Last store", "text"], ["every", "Every (days)", "int"], ["note", "Note", "text"]]}};
 const COLLS = ["txns", "bills", "loans", "people", "utilities", "reimb", "values", "premiums", "shop"];
 const KEYCOL = { Settings: "key", Utilities: "id" };
 const keyOf = (T) => KEYCOL[T] || "id";
@@ -545,8 +549,9 @@ const colLetter = (n) => { let s = ""; n++; while (n) { const m = (n - 1) % 26; 
 const rng = (sheet, a) => encodeURIComponent("'" + sheet.replace(/'/g, "''") + "'" + (a ? "!" + a : ""));
 const CYC_TXT = { A: "15th", B: "30th", AB: "15th & 30th" };
 const txtCyc = (s) => (/&/.test(s) ? "AB" : /30/.test(s) ? "B" : "A");
-const periodTxt = (p) => (p ? p.slice(0, 7) + " " + CYC_TXT[p.slice(8)] + " cutoff" : "");
-const txtPeriod = (s) => { const m = /^(\d{4}-\d{2})\s+(15th|30th)/.exec(s || ""); return m ? m[1] + "-" + (m[2] === "15th" ? "A" : "B") : ""; };
+/* "2026-11 1st cutoff (10th)"; older rows say "15th cutoff" / "30th cutoff" and still read fine */
+const periodTxt = (p) => (p ? p.slice(0, 7) + " " + (p.slice(8) === "A" ? "1st" : "2nd") + " cutoff (" + (typeof cutName === "function" ? cutName(p.slice(8)) : CYC_TXT[p.slice(8)]) + ")" : "");
+const txtPeriod = (s) => { const m = /^(\d{4}-\d{2})\s+(15th|30th|1st|2nd)/.exec(s || ""); return m ? m[1] + "-" + (m[2] === "15th" || m[2] === "1st" ? "A" : "B") : ""; };
 const TYPE_LBL = { expense: "Expense", income: "Income", transfer: "Transfer" };
 const ENTRY_LBL = { lend: "Lent", repay: "Paid back" };
 const SETTING_KEYS = ["categories", "budgets", "salary", "house", "history", "staff", "mealCap", "reimbAcct", "payer", "lastMove", "premiums", "goals"];
@@ -720,7 +725,7 @@ const model = {
       const o = { id: r.id, date: r.date || todayStr(), type: (r.type || "expense").toLowerCase(), amount: r.amount || 0, account: r.account || "", to: r.to || "", category: r.category || "", note: r.note || "", link: null, createdAt: r.createdAt || 0 };
       if (r.linkKind) o.link = { kind: r.linkKind, id: r.linkId || undefined, period: txtPeriod(r.period) || undefined };
       o.receipts = txtToRc(r.receipts);
-      if (r.linkKind === "salary") { const p = txtPeriod(r.period); o.details = { cut: p ? p.slice(8) : "A", gross: r.gross || 0, tax: r.tax || 0, hmo: r.hmo || 0, equity: r.equity || 0, coop: r.coop || 0, tardy: r.tardy || 0, absent: r.absent || 0, other: r.other || 0 }; }
+      if (r.linkKind === "salary") { const p = txtPeriod(r.period); o.details = { cut: p ? p.slice(8) : "A", gross: r.gross || 0, tax: r.tax || 0, gsis: r.gsis || 0, hdmf: r.hdmf || 0, phic: r.phic || 0, hmo: r.hmo || 0, equity: r.equity || 0, coop: r.coop || 0, tardy: r.tardy || 0, absent: r.absent || 0, other: r.other || 0, earn: String(r.earn || "").split("|").map((x) => x.split("=")).filter((q) => q.length === 2 && q[0].trim()).map(([n, a]) => ({ n: n.trim(), a: Number(a) || 0 })) }; }
       return o;
     });
     const bills = (t.Bills || []).map((r) => ({ id: r.id, name: r.name, amount: r.amount, cycle: txtCyc(r.cycle), category: r.category || "Other bills", payTo: r.payTo || "", active: r.active !== "No" }));
@@ -740,7 +745,7 @@ const model = {
     if (c === "txns") {
       const d = o.details || {};
       const period = o.link && o.link.kind === "salary" ? o.date.slice(0, 7) + "-" + (d.cut || "A") : o.link && o.link.period;
-      return [["Transactions", { id: o.id, date: o.date, type: TYPE_LBL[o.type] || o.type, category: o.category, amount: o.amount, account: o.account, accountName: this.acct(o.account).name || "", to: o.to || "", toName: o.to ? this.acct(o.to).name || "" : "", note: o.note || "", linkKind: o.link ? o.link.kind : "", linkId: o.link && o.link.id || "", period: periodTxt(period), gross: d.gross, tax: d.tax, hmo: d.hmo, equity: d.equity, coop: d.coop, tardy: d.tardy, absent: d.absent, other: d.other, receipts: rcToTxt(o.receipts), createdAt: o.createdAt || Date.now() }]];
+      return [["Transactions", { id: o.id, date: o.date, type: TYPE_LBL[o.type] || o.type, category: o.category, amount: o.amount, account: o.account, accountName: this.acct(o.account).name || "", to: o.to || "", toName: o.to ? this.acct(o.to).name || "" : "", note: o.note || "", linkKind: o.link ? o.link.kind : "", linkId: o.link && o.link.id || "", period: periodTxt(period), gross: d.gross, tax: d.tax, gsis: d.gsis || (o.details ? 0 : ""), hdmf: d.hdmf || (o.details ? 0 : ""), phic: d.phic || (o.details ? 0 : ""), earn: (d.earn || []).filter((e) => e.n).map((e) => e.n.replace(/[=|]/g, " ") + "=" + (+e.a || 0)).join(" | "), hmo: d.hmo, equity: d.equity, coop: d.coop, tardy: d.tardy, absent: d.absent, other: d.other, receipts: rcToTxt(o.receipts), createdAt: o.createdAt || Date.now() }]];
     }
     if (c === "bills") return [["Bills", { id: o.id, name: o.name, amount: o.amount, cycle: CYC_TXT[o.cycle], category: o.category, payTo: o.payTo || "", payToName: o.payTo ? this.acct(o.payTo).name || "" : "", active: o.active === false ? "No" : "Yes" }]];
     if (c === "loans") return [["Loans", { id: o.id, name: o.name, lender: o.lender, balance: o.balance, asOf: o.asOf, payment: o.payment, cycle: CYC_TXT[o.cycle], left: o.left, original: o.original }]];
@@ -1088,10 +1093,10 @@ function tOverview(v) {
   const unpaidAmt = r2(sum(unpaid, (i) => Number(i.amount) || 0));
   const asBilled = unpaid.some((i) => !i.amount);
 
-  /* cutoff cash flow: 1st–15th and 16th–end of the month */
-  const ld = lastDay(S.month);
+  /* cutoff cash flow: the month splits between the two paydays */
+  const ld = lastDay(S.month); const sp = cutSplit();
   const cut = ["A", "B"].map((c) => {
-    const from = S.month + "-" + (c === "A" ? "01" : "16"), to = S.month + "-" + (c === "A" ? "15" : pad(ld));
+    const from = S.month + "-" + (c === "A" ? "01" : pad(sp + 1)), to = S.month + "-" + (c === "A" ? pad(sp) : pad(ld));
     const inW = v.txns.filter((t) => t.date >= from && t.date <= to);
     const cin = r2(sum(inW.filter((t) => t.type === "income"), (t) => +t.amount));
     const out = r2(sum(inW.filter((t) => t.type === "expense" || (t.type === "transfer" && t.link && t.account)), (t) => +t.amount));
@@ -1107,11 +1112,11 @@ function tOverview(v) {
     const W = (n) => Math.max(0, Math.min(100, (n / cutMax) * 100)).toFixed(1) + "%";
     const ok = x.left >= 0;
     return `<div class="cut">
-      <div class="cut-top"><b>${x.c === "A" ? "15th cutoff" : "30th cutoff"}</b><span class="note">${x.c === "A" ? "1–15" : "16–" + ld} ${esc(ymShort(S.month))}</span></div>
+      <div class="cut-top"><b>${esc(cutName(x.c))} payday</b><span class="note">${x.c === "A" ? "1–" + sp : (sp + 1) + "–" + ld} ${esc(ymShort(S.month))}</span></div>
       <div class="flow"><span class="flow-lbl">In</span><div class="flow-track"><i style="width:${W(x.cin)};background:var(--income)"></i><i style="width:${W(x.exp)};background:var(--income);opacity:.35"></i></div><span class="num">${fmt(r2(x.cin + x.exp))}</span></div>
       <div class="flow"><span class="flow-lbl">Out</span><div class="flow-track"><i style="width:${W(x.out)};background:var(--accent)"></i><i style="width:${W(x.due)};background:var(--accent);opacity:.35"></i></div><span class="num">${fmt(r2(x.out + x.due))}</span></div>
       <div class="cut-foot"><span class="note">${x.due ? fmt(x.due) + " still due" + (x.billed ? " + as billed" : "") : "Nothing left due"}</span><span class="pill ${ok ? "paid" : "over"}">${ok ? (x.exp ? "Should cover · " : "Covered · ") + fmt(x.left) + " left" : (x.exp ? "May fall short by " : "Short by ") + fmt(-x.left)}</span></div>
-      ${x.exp ? `<p class="note">Payday not in yet; counting your last ${x.c === "A" ? "15th" : "30th"} take-home of ${fmt(x.exp)}.</p>` : ""}
+      ${x.exp ? `<p class="note">Payday not in yet; counting your last ${esc(cutName(x.c))} take-home of ${fmt(x.exp)}.</p>` : ""}
     </div>`;
   };
 
@@ -1249,7 +1254,7 @@ function tBills(v) {
     const its = items.filter((i) => i.cycle === c).sort((a, b) => (a.paid ? 1 : 0) - (b.paid ? 1 : 0) || a.name.localeCompare(b.name));
     const paidAmt = r2(sum(its.filter((i) => i.paid), (i) => +i.paid.amount));
     const leftAmt = r2(sum(its.filter((i) => !i.paid), (i) => Number(i.amount) || 0));
-    return `<div><div class="cut-head"><h3>${c === "A" ? "15th" : "30th"} cutoff</h3><span class="note">Due ${esc(dShort(dueDate(S.month, c)))}</span></div>
+    return `<div><div class="cut-head"><h3>${esc(cutName(c))} cutoff</h3>${c === "A" ? `<button type="button" class="linkbtn" data-act="paydays" style="margin-left:6px">Change paydays</button>` : ""}<span class="note">Due ${esc(dShort(dueDate(S.month, c)))}</span></div>
       <div class="rows">${its.length ? its.map((i) => dueRow(v, i)).join("") : `<div class="empty">Nothing on this cutoff.</div>`}</div>
       <div class="cut-foot"><span>Paid <span class="num">${fmt(paidAmt)}</span></span><span>Left <span class="num">${fmt(leftAmt)}${its.some((i) => !i.paid && !i.amount) ? " + as billed" : ""}</span></span></div></div>`;
   };
@@ -1285,44 +1290,6 @@ function tLoans(v) {
       <div class="acts"><button type="button" class="btn small" data-act="loanpay" data-id="${esc(l.id)}"${s.balance <= 0 ? " disabled" : ""}>Record payment</button><button type="button" class="btn small ghost" data-act="editloan" data-id="${esc(l.id)}">Edit</button></div>
     </article>`; }).join("")}</div>` : `<div class="empty"><strong>No loans recorded</strong>Add each loan with its remaining balance and payment schedule.</div>`}
   </section>`;
-}
-
-function tSalary(v) {
-  const sal = v.txns.filter((t) => t.type === "income" && t.category === "Salary").sort((a, b) => a.date.localeCompare(b.date));
-  const other = v.txns.filter((t) => t.type === "income" && t.category !== "Salary" && t.date.startsWith(S.month));
-  const months = []; for (let k = 5; k >= 0; k--) months.push(shiftYM(S.month, -k));
-  const byM = months.map((ym) => sal.filter((t) => t.date.startsWith(ym)));
-  const yr = S.month.slice(0, 4);
-  const ytd = sal.filter((t) => t.date.startsWith(yr));
-  const lost = r2(sum(ytd, (t) => (t.details ? (+t.details.tardy || 0) + (+t.details.absent || 0) : 0)));
-  const ytdNet = r2(sum(ytd, (t) => +t.amount));
-  const ytdEq = r2(sum(ytd, (t) => (t.details ? +t.details.equity || 0 : 0)));
-  const ded = (t, k) => (t.details ? Number(t.details[k]) || 0 : 0);
-  return `
-  <section class="panel kpis">
-    <div class="kpi hero"><span class="eyebrow">Take-home ${esc(yr)}</span><span class="v pos">${fmt(ytdNet)}</span><span class="s">${ytd.length} paydays logged</span></div>
-    <div class="kpi"><span class="eyebrow">Average per month</span><span class="v">${fmt(ytdNet / Math.max(1, new Set(ytd.map((t) => ymOf(t.date))).size))}</span><span class="s">Net of deductions</span></div>
-    <div class="kpi"><span class="eyebrow">Saved via payroll</span><span class="v">${fmt(ytdEq)}</span><span class="s">Coop equity deductions</span></div>
-    <div class="kpi"><span class="eyebrow">Lost to tardy &amp; absences</span><span class="v ${lost ? "neg" : ""}">${fmt(lost)}</span><span class="s">${esc(yr)} so far</span></div>
-  </section>
-  <div class="cols">
-    <section class="panel">
-      <div class="phead"><h2>Paydays</h2><div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn small primary" data-act="newsalary">Log payday</button><button type="button" class="btn small" data-act="newincome">Other income</button></div></div>
-      <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Payday</th><th>Gross</th><th>Tax</th><th>Coop &amp; HMO</th><th>Tardy/abs.</th><th>Net</th></tr></thead><tbody>
-      ${sal.filter((t) => t.date.startsWith(S.month) || months.includes(ymOf(t.date))).reverse().map((t) => `<tr class="clickable" data-act="editsalary" data-id="${esc(t.id)}"><td>${esc(dShort(t.date))}</td><td>${fmt(ded(t, "gross"))}</td><td>${fmt(ded(t, "tax"))}</td><td>${fmt(ded(t, "hmo") + ded(t, "equity") + ded(t, "coop"))}</td><td class="${ded(t, "tardy") + ded(t, "absent") ? "neg" : ""}">${fmt(ded(t, "tardy") + ded(t, "absent"))}</td><td class="pos">${fmt(t.amount)}</td></tr>`).join("") || `<tr><td colspan="6" style="text-align:center;color:var(--muted);font-family:var(--f-body)">No paydays logged in the last 6 months.</td></tr>`}
-      </tbody></table></div>
-    </section>
-    <div class="stack">
-      <section class="panel">
-        <div class="phead"><h2>Net pay by month</h2></div>
-        <div class="chart">${barChart(months.map(ymShort), [{ name: "Net pay", values: byM.map((a) => r2(sum(a, (t) => +t.amount))), color: "var(--income)" }], { hi: 5, h: 200, label: "Net pay by month" })}</div>
-      </section>
-      <section class="panel">
-        <div class="phead"><h2>Other income · ${esc(ymShort(S.month))}</h2></div>
-        <div class="rows">${other.length ? other.map((t) => `<button type="button" class="row" data-act="editincome" data-id="${esc(t.id)}"><span class="bar6" style="background:var(--income)"></span><span style="min-width:0"><span class="t" style="display:block">${esc(t.category)}</span><span class="m" style="display:block">${esc([dShort(t.date), t.note].filter(Boolean).join(" · "))}</span></span><span class="r"><span class="amt pos">+${fmt(t.amount)}</span></span></button>`).join("") : `<div class="empty">No bonuses, reimbursements or side income this month.</div>`}</div>
-      </section>
-    </div>
-  </div>`;
 }
 
 function tOwed(v) {
@@ -1526,7 +1493,7 @@ function sheetBill(v, b) {
   const isNew = !b; b = b || { name: "", category: "Utilities", amount: "", cycle: "B", payTo: "" };
   openSheet(isNew ? "Add a recurring bill" : "Edit " + b.name, `
     ${fld("bName", "Name", inp("bName", b.name, 'maxlength="60" placeholder="e.g. Meralco"'))}
-    <div class="grid2">${fld("bAmt", "Usual amount", money("bAmt", b.amount) )}${fld("bCyc", "Paid on", `<select id="bCyc"><option value="A"${b.cycle === "A" ? " selected" : ""}>15th cutoff</option><option value="B"${b.cycle === "B" ? " selected" : ""}>30th cutoff</option></select>`)}</div>
+    <div class="grid2">${fld("bAmt", "Usual amount", money("bAmt", b.amount) )}${fld("bCyc", "Paid on", `<select id="bCyc"><option value="A"${b.cycle === "A" ? " selected" : ""}>${esc(cutName("A"))} cutoff</option><option value="B"${b.cycle === "B" ? " selected" : ""}>${esc(cutName("B"))} cutoff</option></select>`)}</div>
     <p class="note" style="margin-top:-6px">Leave the amount blank if it changes every month ("as billed").</p>
     <div class="grid2">${fld("bCat", "Category", `<select id="bCat">${BILL_CATS.map((c) => `<option${c === b.category ? " selected" : ""}>${esc(c)}</option>`).join("")}</select>`)}${fld("bTo", "Pays off an account?", `<select id="bTo"><option value="">No, it's a bill</option>${acctOpts(v, b.payTo, (a) => ["credit", "bnpl", "savings"].includes(a.type))}</select>`)}</div>`,
     async () => {
@@ -1547,7 +1514,7 @@ function sheetLoan(v, l) {
   openSheet(isNew ? "Add a loan" : "Edit " + l.name, `
     <div class="grid2">${fld("lName", "Loan name", inp("lName", l.name, 'maxlength="60" placeholder="e.g. Refrigerator loan"'))}${fld("lLender", "Lender", inp("lLender", l.lender, 'maxlength="60" placeholder="e.g. Coop, MariBank"'))}</div>
     <div class="grid2">${fld("lBal", "Balance remaining", money("lBal", l.balance))}${fld("lAsOf", "Balance as of", inp("lAsOf", l.asOf, 'type="date"'))}</div>
-    <div class="grid3">${fld("lPay", "Payment each due", money("lPay", l.payment))}${fld("lCyc", "Due on", `<select id="lCyc"><option value="A"${l.cycle === "A" ? " selected" : ""}>15th</option><option value="B"${l.cycle === "B" ? " selected" : ""}>30th</option><option value="AB"${l.cycle === "AB" ? " selected" : ""}>15th & 30th</option></select>`)}${fld("lLeft", "Payments left", inp("lLeft", l.left, 'inputmode="numeric"'))}</div>
+    <div class="grid3">${fld("lPay", "Payment each due", money("lPay", l.payment))}${fld("lCyc", "Due on", `<select id="lCyc"><option value="A"${l.cycle === "A" ? " selected" : ""}>${esc(cutName("A"))}</option><option value="B"${l.cycle === "B" ? " selected" : ""}>${esc(cutName("B"))}</option><option value="AB"${l.cycle === "AB" ? " selected" : ""}>Both (${esc(cutName("AB"))})</option></select>`)}${fld("lLeft", "Payments left", inp("lLeft", l.left, 'inputmode="numeric"'))}</div>
     ${fld("lOrig", "Original total with interest (optional, for the progress bar)", money("lOrig", l.original))}`,
     async () => {
       const name = val("lName").trim(); if (!name) return shErr("Name the loan.");
@@ -1581,56 +1548,6 @@ function sheetTx(v, t) {
   sheetDelete = async () => { if (await act(() => store.del("txns", t.id), "Expense deleted")) closeSheet(); };
 }
 
-function sheetSalary(v, t) {
-  const s = v.settings.salary || {}; const d = t && t.details || {};
-  const today = todayStr(); const cut = t ? d.cut : (Number(today.slice(8)) <= 22 ? "A" : "B");
-  const F = ["gross", "tax", "hmo", "equity", "coop", "tardy", "absent", "other"];
-  const L = { gross: "Gross for this cutoff", tax: "Withholding tax", hmo: "HMO", equity: "Coop equity / savings", coop: "Coop loan payment", tardy: "Tardy & undertime", absent: "Absences", other: "Other deductions" };
-  const last = v.txns.filter((x) => x.category === "Salary" && x.details).sort((a, b) => b.date.localeCompare(a.date))[0];
-  const pre = t ? d : Object.assign({}, last ? last.details : {}, { gross: s.perCutoff || (last && last.details.gross) || "", tardy: "", absent: "", other: "" });
-  const mv = t ? v.txns.find((x) => x.link && x.link.kind === "salarymove" && x.link.id === t.id) : null;
-  const mvFee = mv ? v.txns.find((x) => x.link && x.link.kind === "fee" && x.link.id === mv.id) : null;
-  openSheet(t ? "Edit payday" : "Log a payday", `
-    <div class="grid2">${fld("sDate", "Payday", inp("sDate", t ? t.date : today, 'type="date"'))}${fld("sCut", "Cutoff", `<select id="sCut"><option value="A"${cut === "A" ? " selected" : ""}>15th</option><option value="B"${cut === "B" ? " selected" : ""}>30th</option></select>`)}</div>
-    <div class="grid2">${F.map((k) => fld("s_" + k, L[k], money("s_" + k, pre[k]))).join("")}</div>
-    <div class="callout" style="margin-top:0"><span>Take-home</span><b id="sNet">${fmt(0)}</b></div>
-    <div class="grid2">${fld("sAcct", "Credited to", `<select id="sAcct">${acctOpts(v, t ? t.account : s.account, (a) => ["bank", "ewallet"].includes(a.type))}</select>`)}${fld("sMove", "Then move it to", `<select id="sMove"><option value="">Don't move it</option>${acctOpts(v, mv ? mv.to : t ? "" : s.moveTo, (a) => ["bank", "ewallet", "savings"].includes(a.type))}</select>`)}</div>
-    <div id="sMoveWrap" class="grid2">${fld("sMoveAmt", "Amount moved", money("sMoveAmt", mv ? mv.amount : ""))}${fld("sMoveFee", "Transfer fee (optional)", money("sMoveFee", mvFee ? mvFee.amount : ""))}</div>`,
-    async () => {
-      const det = { cut: val("sCut") }; F.forEach((k) => (det[k] = num(val("s_" + k)) || 0));
-      if (!(det.gross > 0)) return shErr("Enter your gross pay for this cutoff.");
-      const net = r2(det.gross - sum(F.slice(1), (k) => det[k]));
-      if (!(net > 0)) return shErr("Deductions are larger than gross pay. Check the numbers.");
-      const nt = { id: t ? t.id : newId("t"), date: val("sDate"), type: "income", amount: net, account: val("sAcct"), category: "Salary", note: (det.cut === "A" ? "15th" : "30th") + " cutoff", link: { kind: "salary" }, details: det, createdAt: t ? t.createdAt || Date.now() : Date.now() };
-      const moveTo = val("sMove"), moveAmt = moveTo ? num(val("sMoveAmt")) : 0, moveFee = moveTo && val("sMoveFee").trim() ? num(val("sMoveFee")) : 0;
-      if (moveTo && moveTo === nt.account) return shErr("Choose a different account to move your pay to.");
-      if (moveTo && !(moveAmt > 0)) return shErr("Enter how much you moved.");
-      if (moveTo && moveAmt > net) return shErr("You can't move more than the take-home of " + fmt(net) + ".");
-      if (!(moveFee >= 0)) return shErr("Enter the fee as a number, or leave it blank.");
-      if (await act(async () => {
-        await store.put("txns", nt);
-        if (moveTo) {
-          const mid = mv ? mv.id : newId("t");
-          await store.put("txns", { id: mid, date: nt.date, type: "transfer", account: nt.account, to: moveTo, amount: moveAmt, category: "Transfer", note: "Pay moved to " + acctName(v, moveTo), link: { kind: "salarymove", id: nt.id }, createdAt: mv ? mv.createdAt || Date.now() : Date.now() });
-          if (moveFee > 0) await store.put("txns", { id: mvFee ? mvFee.id : newId("t"), date: nt.date, type: "expense", account: nt.account, amount: moveFee, category: "Bank fees", note: "Transfer fee", link: { kind: "fee", id: mid }, createdAt: Date.now() });
-          else if (mvFee) await store.del("txns", mvFee.id);
-        } else if (mv) { if (mvFee) await store.del("txns", mvFee.id); await store.del("txns", mv.id); }
-        const st = Object.assign(clone(DEFAULT_SETTINGS), S.settings || {}); const sal = Object.assign({}, st.salary);
-        if (!t) { sal.perCutoff = det.gross; sal.account = nt.account; }
-        sal.moveTo = moveTo;
-        if (JSON.stringify(sal) !== JSON.stringify(st.salary)) { st.salary = sal; await store.saveSettings(st); }
-      }, t ? "Payday updated" : "Payday logged: " + fmt(net) + (moveTo ? " · moved to " + acctName(v, moveTo) : ""))) closeSheet();
-    }, t ? delBtn : "");
-  let moveEdited = !!mv;
-  const calc = () => {
-    const g = num(val("s_gross")) || 0; const n = r2(g - sum(F.slice(1), (k) => num(val("s_" + k)) || 0)); $("sNet").textContent = fmt(n);
-    $("sMoveWrap").hidden = !val("sMove");
-    if (!moveEdited && val("sMove")) $("sMoveAmt").value = n > 0 ? n.toFixed(2) : "";
-  };
-  $("sheetForm").addEventListener("input", (e) => { if (e.target.id === "sMoveAmt") moveEdited = true; calc(); });
-  $("sheetForm").addEventListener("change", calc); calc();
-  sheetDelete = t ? async () => { if (await act(async () => { if (mv) { if (mvFee) await store.del("txns", mvFee.id); await store.del("txns", mv.id); } await store.del("txns", t.id); }, "Payday removed")) closeSheet(); } : null;
-}
 function sheetIncome(v, t) {
   openSheet(t ? "Edit income" : "Other income", `
     <div class="grid2">${fld("iAmt", "Amount", money("iAmt", t ? t.amount : ""))}${fld("iDate", "Date", inp("iDate", t ? t.date : todayStr(), 'type="date"'))}</div>
@@ -2739,6 +2656,7 @@ function baseline(v) {
   const avg = (f) => (fl.length ? r2(sum(fl, f) / fl.length) : 0);
   let takeHome = avg((m) => m.takeHome);
   const sal = v.settings.salary || {};
+  if (!(takeHome > 0) && slipOf(v)) takeHome = slipCalc(slipOf(v)).month;
   if (!(takeHome > 0)) takeHome = r2((Number(sal.perCutoff) || 0) * 2);
   if (!(takeHome > 0)) takeHome = monthFlow(v, ymOf(todayStr())).takeHome;
   let daily = avg((m) => m.daily);
@@ -2780,7 +2698,13 @@ function goalPlan(v, g) {
   /* where you should be today on a straight line from the start to zero */
   const span = Math.max(1, daysBetween(g.startDate, g.target)), gone = Math.max(0, Math.min(span, daysBetween(g.startDate, todayStr())));
   const idealNow = r2(g.startDebt * (1 - gone / span));
-  return { debt, B, M, schedSum, extraNeeded, reachable, atPace, gap, allow, perDay: r2(allow / 30.44), perWeek: r2((allow / 30.44) * 7), targets, progress, idealNow, ahead: r2(idealNow - debt.total) };
+  /* bonuses on your payslip that land before the goal date and haven't come in yet */
+  const slip = slipOf(v); const got = v.txns.filter((t) => t.type === "income" && t.category !== "Salary");
+  const bon = [];
+  if (slip) for (let k = 0; k < M; k++) { const ym = shiftYM(cur, k); (slip.bonuses || []).filter((b) => +b.m === Number(ym.slice(5)) && +b.a > 0).forEach((b) => { if (!got.some((t) => t.date.startsWith(ym.slice(0, 4)) && (t.note || "").toLowerCase().includes(b.n.toLowerCase()))) bon.push({ n: b.n, a: +b.a, ym }); }); }
+  const bonSum = r2(sum(bon, (b) => b.a));
+  const extraWithBon = r2(Math.max(0, debt.total - schedSum - bonSum) / M);
+  return { bon, bonSum, extraWithBon, debt, B, M, schedSum, extraNeeded, reachable, atPace, gap, allow, perDay: r2(allow / 30.44), perWeek: r2((allow / 30.44) * 7), targets, progress, idealNow, ahead: r2(idealNow - debt.total) };
 }
 function savePlan(v, g) {
   const bal = balances(v); const B = baseline(v); const have = g.account ? Math.max(0, bal[g.account] || 0) : 0;
@@ -2856,6 +2780,7 @@ function goalCard(v, g) {
     <p class="verdict ${p.reachable ? "ok" : "bad"}">${p.reachable
       ? `Your date works. Send <b>${fmt(p.extraNeeded)}</b> extra to debt each month (${fmt(r2(p.extraNeeded / 2))} per cutoff) and keep daily spending to <b>${fmt(p.perWeek)} a week</b> (${fmt(p.perDay)} a day). ${p.ahead >= 0 ? `You're ${fmt(p.ahead)} ahead of the straight-line path.` : `You're ${fmt(-p.ahead)} behind the straight-line path, so the first few cutoffs need to be a bit bigger.`}`
       : `At your current habits this date isn't reachable: you'd need <b>${fmt(p.extraNeeded)}</b> extra a month, but your usual month only leaves <b>${fmt(Math.max(0, B.free))}</b>. To close the ${fmt(p.gap)} gap, daily spending would have to drop to ${fmt(p.allow)} a month (${fmt(p.perDay)} a day${B.daily > 0 ? `, ${Math.round((1 - p.allow / B.daily) * 100)}% less than now` : ""}), or bring in extra income, or move the date to ${p.atPace.doneYm ? esc(ymName(p.atPace.doneYm)) : "later"}.`}</p>
+    ${p.bonSum > 0 ? `<p class="verdict ${B.free >= p.extraWithBon - 0.5 ? "ok" : "warn"}"><b>Bonuses before your date: ${fmt(p.bonSum)}</b> (${p.bon.map((x) => esc(x.n) + " in " + esc(ymShort(x.ym))).join(", ")}, before tax). If they go straight to debt, the extra you need drops to <b>${fmt(p.extraWithBon)} a month</b>${p.reachable ? "" : B.free >= p.extraWithBon - 0.5 ? ", which makes your date reachable" : `, still more than the ${fmt(Math.max(0, B.free))} your usual month leaves`}.</p>` : ""}
     ${tgt ? `<p class="note"><b>Attack first:</b> ${esc(tgt.name)} (${fmt(tgt.bal)} left). It's your smallest balance, so extra payments clear it fastest${tgt.pay ? ` and free up ${fmt(tgt.pay)} a month for the next one` : ""}.</p>` : ""}
     <div class="legend"><span><i style="background:var(--accent)"></i>Your debt</span><span><i style="background:var(--pear)"></i>Path to your goal</span><span><i style="background:var(--accent);opacity:.6"></i>Dotted: at your current pace</span></div>
     <div class="chart">${goalChart(v, g, p)}</div>
@@ -3151,6 +3076,236 @@ function sheetShopDone(v) {
   $("sheetForm").addEventListener("input", upd); $("sheetForm").addEventListener("change", upd); upd();
 }
 
+/* ============ salary: your payslip structure, paydays, bonuses ============ */
+/* payday days come from Settings; 30 or later means the last day of the month */
+function payDays() { const p = (S.settings && S.settings.salary && S.settings.salary.payDays) || [15, 30]; return [Number(p[0]) || 15, Number(p[1]) || 30]; }
+const ordDay = (n) => (n >= 30 ? "end of month" : n + (n % 10 === 1 && n !== 11 ? "st" : n % 10 === 2 && n !== 12 ? "nd" : n % 10 === 3 && n !== 13 ? "rd" : "th"));
+const cutName = (c) => { const [a, b] = payDays(); return c === "A" ? ordDay(a) : c === "B" ? (b >= 30 ? "30th" : ordDay(b)) : (ordDay(a) + " & " + (b >= 30 ? "30th" : ordDay(b))); };
+const payDate = (ym, c) => { const [a, b] = payDays(); const d = c === "A" ? a : b; return ym + "-" + pad(d >= 30 ? lastDay(ym) : Math.min(d, lastDay(ym))); };
+/* the day the month splits into the two cutoffs' windows */
+const cutSplit = () => { const [a, b] = payDays(); return b >= 28 ? a : b - 1; };
+
+/* deductions every payslip can have; the first four come from the payslip, the rest change payday to payday */
+const DED = [["gsis", "GSIS"], ["hdmf", "Pag-IBIG (HDMF)"], ["phic", "PhilHealth"], ["tax", "Withholding tax"], ["equity", "Coop equity / savings"], ["coop", "Coop loan"], ["hmo", "HMO"], ["tardy", "Tardy & undertime"], ["absent", "Absences"], ["other", "Other deductions"]];
+const GOV = ["gsis", "hdmf", "phic"], VAR = ["equity", "coop", "hmo", "tardy", "absent", "other"];
+function slipOf(v) { const s = (v.settings.salary || {}).slip; return s && (s.earnings || []).length ? s : null; }
+function slipCalc(slip) {
+  const gross = r2(sum(slip.earnings || [], (e) => +e.a || 0));
+  const ded = r2(sum(DED, ([k]) => +((slip.ded || {})[k]) || 0));
+  return { gross, ded, net: r2(gross - ded), month: r2((gross - ded) * 2), grossM: r2(gross * 2) };
+}
+const earnTxt = (lines) => (lines || []).filter((e) => e.n).map((e) => e.n.replace(/[=|]/g, " ") + "=" + (+e.a || 0)).join(" | ");
+const txtEarn = (s) => String(s || "").split("|").map((x) => x.split("=")).filter((p) => p.length === 2 && p[0].trim()).map(([n, a]) => ({ n: n.trim(), a: Number(a) || 0 }));
+const dget = (t, k) => (t.details ? Number(t.details[k]) || 0 : 0);
+
+function payslipPanel(v) {
+  const s = v.settings.salary || {}; const slip = slipOf(v);
+  if (!slip) return `<section class="panel"><div class="phead"><h2>Your payslip</h2></div><div class="empty"><strong>Set up your payslip once</strong>Enter your earnings and deductions per payday. Every payday then fills in by itself, and Prudence knows your exact take-home.<div style="margin-top:10px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap"><button type="button" class="btn primary small" data-act="payslip">Set up payslip</button><button type="button" class="btn small" data-act="paydays">Just set paydays (${esc(cutName("A"))} &amp; ${esc(cutName("B"))})</button></div></div></section>`;
+  const c = slipCalc(slip); const d = slip.ded || {};
+  const line = (n, a, cls) => `<div class="eq${cls ? " " + cls : ""}"><span>${esc(n)}</span><b class="num">${a}</b></div>`;
+  return `<section class="panel">
+    <div class="phead"><div><h2>Your payslip</h2><span class="note">${esc([slip.position, slip.grade ? "SG " + slip.grade : "", slip.step ? "Step " + slip.step : ""].filter(Boolean).join(" · "))}${slip.effective ? " · since " + esc(dLabel(slip.effective)) : ""}</span></div><button type="button" class="btn small ghost" data-act="payslip">Edit</button></div>
+    <p class="note" style="margin:0 0 8px">Paid on the <b>${esc(cutName("A"))}</b> and <b>${esc(cutName("B"))}</b> · per payday</p>
+    <div class="plan slip">
+      ${(slip.earnings || []).map((e) => line(e.n, fmt(e.a))).join("")}
+      ${line("Gross pay", fmt(c.gross), "tot")}
+      ${DED.filter(([k]) => +d[k] > 0).map(([k, l]) => line("− " + l, fmt(d[k]))).join("")}
+      ${line("Take-home per payday", fmt(c.net), "tot big")}
+    </div>
+    <div class="ustats" style="margin-top:10px"><div><span class="eyebrow">Take-home a month</span><b class="num pos">${fmt(c.month)}</b></div><div><span class="eyebrow">Gross a month</span><b class="num">${fmt(c.grossM)}</b></div>${+slip.employer > 0 ? `<div><span class="eyebrow">Employer pays in</span><b class="num">${fmt(slip.employer)}</b><span class="note">a month to GSIS, Pag-IBIG &amp; PhilHealth for you</span></div>` : ""}</div>
+    ${slip.notes ? `<p class="note" style="margin-top:8px">${esc(slip.notes)}</p>` : ""}
+  </section>`;
+}
+function bonusesPanel(v) {
+  const slip = slipOf(v); const list = (slip && slip.bonuses || []).filter((b) => b.n && +b.a > 0);
+  if (!list.length) return "";
+  const yr = S.month.slice(0, 4); const nowM = Number(todayStr().slice(5, 7)), nowY = todayStr().slice(0, 4);
+  const got = v.txns.filter((t) => t.type === "income" && t.category !== "Salary" && t.date.startsWith(yr));
+  const rows = list.slice().sort((a, b) => (+a.m || 13) - (+b.m || 13)).map((b) => {
+    const rec = got.find((t) => (t.note || "").toLowerCase().includes(b.n.toLowerCase()));
+    const past = yr < nowY || (yr === nowY && +b.m && +b.m < nowM);
+    return `<div class="row" style="cursor:default"><span class="bar6" style="background:${rec ? "var(--income)" : "var(--pear)"}"></span><span style="min-width:0"><span class="t" style="display:block">${esc(b.n)}</span><span class="m" style="display:block">${+b.m ? "Usually " + esc(new Date(2000, +b.m - 1, 1).toLocaleDateString("en-PH", { month: "long" })) : "Month not set"}${rec ? " · received " + esc(dShort(rec.date)) + ", " + fmt(rec.amount) : past ? " · not logged yet" : ""}</span></span><span class="r"><span class="amt">${fmt(b.a)}</span>${rec ? `<span class="pill paid">Received</span>` : `<button type="button" class="btn small" data-act="logbonus" data-n="${esc(b.n)}" data-a="${esc(b.a)}">Log it</button>`}</span></div>`;
+  }).join("");
+  const total = r2(sum(list, (b) => +b.a));
+  const left = r2(sum(list.filter((b) => !got.some((t) => (t.note || "").toLowerCase().includes(b.n.toLowerCase())) && (yr > nowY || (yr === nowY && (!+b.m || +b.m >= nowM)))), (b) => +b.a));
+  return `<section class="panel"><div class="phead"><h2>Bonuses ${esc(yr)}</h2><span class="eyebrow">${fmt(total)} a year</span></div>
+    <div class="rows">${rows}</div>
+    <p class="note" style="margin-top:8px">${left > 0 && yr === nowY ? `Still to come this year: <b>${fmt(left)}</b> before tax. ` : ""}Log the amount that actually lands in your account; bonuses above the tax-free ceiling may have tax withheld.</p></section>`;
+}
+function salaryRows(v, sal, months) {
+  return sal.filter((t) => months.includes(ymOf(t.date))).reverse().map((t) => {
+    const gov = r2(sum(GOV, (k) => dget(t, k))), varD = r2(sum(VAR, (k) => dget(t, k)));
+    return `<tr class="clickable" data-act="editsalary" data-id="${esc(t.id)}"><td>${esc(dShort(t.date))}</td><td>${fmt(dget(t, "gross"))}</td><td>${gov ? fmt(gov) : "—"}</td><td>${fmt(dget(t, "tax"))}</td><td>${varD ? fmt(varD) : "—"}</td><td><b>${fmt(t.amount)}</b></td></tr>`;
+  }).join("") || `<tr><td colspan="6" style="text-align:center;color:var(--muted);font-family:var(--f-body)">No paydays logged in these months.</td></tr>`;
+}
+function tSalary(v) {
+  const sal = v.txns.filter((t) => t.type === "income" && t.category === "Salary").sort((a, b) => a.date.localeCompare(b.date));
+  const other = v.txns.filter((t) => t.type === "income" && t.category !== "Salary" && t.date.startsWith(S.month));
+  const months = []; for (let k = 5; k >= 0; k--) months.push(shiftYM(S.month, -k));
+  const byM = months.map((ym) => sal.filter((t) => t.date.startsWith(ym)));
+  const yr = S.month.slice(0, 4);
+  const ytd = sal.filter((t) => t.date.startsWith(yr));
+  const ytdNet = r2(sum(ytd, (t) => +t.amount));
+  const ytdGov = r2(sum(ytd, (t) => sum(GOV, (k) => dget(t, k))));
+  const ytdEq = r2(sum(ytd, (t) => dget(t, "equity")));
+  const lost = r2(sum(ytd, (t) => dget(t, "tardy") + dget(t, "absent")));
+  const slip = slipOf(v); const c = slip ? slipCalc(slip) : null;
+  const next = (() => { const t = todayStr(), ym = ymOf(t); const a = payDate(ym, "A"), b = payDate(ym, "B"); return t <= a ? a : t <= b ? b : payDate(shiftYM(ym, 1), "A"); })();
+  return `
+  <section class="panel kpis">
+    <div class="kpi hero"><span class="eyebrow">Take-home ${esc(yr)}</span><span class="v pos">${fmt(ytdNet)}</span><span class="s">${ytd.length} paydays logged</span></div>
+    <div class="kpi"><span class="eyebrow">Next payday</span><span class="v">${esc(dShort(next))}</span><span class="s">${c ? "About " + fmt(c.net) + " · " : ""}Every ${esc(cutName("A"))} &amp; ${esc(cutName("B"))} · <button type="button" class="linkbtn" data-act="paydays">Change</button></span></div>
+    <div class="kpi"><span class="eyebrow">GSIS, Pag-IBIG &amp; PhilHealth</span><span class="v">${fmt(ytdGov)}</span><span class="s">Paid in ${esc(yr)}${ytdEq ? " · coop savings " + fmt(ytdEq) : ""}</span></div>
+    <div class="kpi"><span class="eyebrow">Lost to tardy &amp; absences</span><span class="v ${lost ? "neg" : ""}">${fmt(lost)}</span><span class="s">${esc(yr)} so far</span></div>
+  </section>
+  <div class="cols">
+    <div class="stack">
+      <section class="panel">
+        <div class="phead"><h2>Paydays</h2><div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn small primary" data-act="newsalary">Log payday</button><button type="button" class="btn small" data-act="newincome">Other income</button></div></div>
+        <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Payday</th><th>Gross</th><th>GSIS, HDMF, PHIC</th><th>Tax</th><th>Other ded.</th><th>Net</th></tr></thead><tbody>${salaryRows(v, sal, months)}</tbody></table></div>
+      </section>
+      <section class="panel">
+        <div class="phead"><h2>Net pay by month</h2></div>
+        <div class="chart">${barChart(months.map(ymShort), [{ name: "Net pay", values: byM.map((a) => r2(sum(a, (t) => +t.amount))), color: "var(--income)" }], { hi: 5, h: 200, label: "Net pay by month" })}</div>
+        ${c ? `<p class="note">Your payslip says ${fmt(c.month)} a month. ${(() => { const m = byM[5]; const got = r2(sum(m, (t) => +t.amount)); return m.length === 2 ? (Math.abs(got - c.month) < 1 ? "This month matched it." : `This month you got ${fmt(got)}, ${got < c.month ? fmt(r2(c.month - got)) + " less" : fmt(r2(got - c.month)) + " more"}.`) : ""; })()}</p>` : ""}
+      </section>
+    </div>
+    <div class="stack">
+      ${payslipPanel(v)}
+      ${bonusesPanel(v)}
+      <section class="panel">
+        <div class="phead"><h2>Other income · ${esc(ymShort(S.month))}</h2></div>
+        <div class="rows">${other.length ? other.map((t) => `<button type="button" class="row" data-act="editincome" data-id="${esc(t.id)}"><span class="bar6" style="background:var(--income)"></span><span style="min-width:0"><span class="t" style="display:block">${esc(t.category)}</span><span class="m" style="display:block">${esc([dShort(t.date), t.note].filter(Boolean).join(" · "))}</span></span><span class="r"><span class="amt">${fmt(t.amount)}</span></span></button>`).join("") : `<div class="empty"><strong>No other income this month</strong>Bonuses, side income and reimbursements go here.</div>`}</div>
+      </section>
+    </div>
+  </div>`;
+}
+
+function sheetPaydays(v) {
+  const [pa, pb] = payDays();
+  const opts = (sel) => Array.from({ length: 28 }, (_, i) => i + 1).map((d) => `<option value="${d}"${d === sel ? " selected" : ""}>${ordDay(d)}</option>`).join("") + `<option value="30"${sel >= 30 ? " selected" : ""}>Last day</option>`;
+  openSheet("Your paydays", `
+    <div class="grid2">${fld("pdA", "1st payday", `<select id="pdA">${opts(pa)}</select>`)}${fld("pdB", "2nd payday", `<select id="pdB">${opts(pb)}</select>`)}</div>
+    <p class="note">Bills and loans are grouped by the payday you pay them from, so their cutoffs move with your paydays. Payments you've already logged stay as they are.</p>`,
+    async () => {
+      const a = Number(val("pdA")), b = Number(val("pdB")); if (!(a < b)) return shErr("The 1st payday has to come before the 2nd.");
+      const st = Object.assign(clone(DEFAULT_SETTINGS), S.settings || {}); st.salary = Object.assign({}, st.salary, { payDays: [a, b] });
+      if (await act(() => store.saveSettings(st), "Paydays set to the " + ordDay(a) + " and " + (b >= 30 ? "last day" : ordDay(b)))) closeSheet();
+    });
+}
+function sheetPayslip(v) {
+  const s = v.settings.salary || {}; const slip = clone(s.slip || {});
+  const last = v.txns.filter((x) => x.category === "Salary" && x.details).sort((a, b) => b.date.localeCompare(a.date))[0];
+  const earn = (slip.earnings && slip.earnings.length) ? slip.earnings : [{ n: "Basic pay", a: last ? dget(last, "gross") : s.perCutoff || "" }];
+  const ded = slip.ded || (last ? Object.fromEntries(DED.map(([k]) => [k, dget(last, k) || ""])) : {});
+  const bon = slip.bonuses || [];
+  const [pa, pb] = payDays();
+  const dayOpts = (sel) => Array.from({ length: 28 }, (_, i) => i + 1).map((d) => `<option value="${d}"${d === sel ? " selected" : ""}>${ordDay(d)}</option>`).join("") + `<option value="30"${sel >= 30 ? " selected" : ""}>Last day</option>`;
+  const MON = Array.from({ length: 12 }, (_, i) => new Date(2000, i, 1).toLocaleDateString("en-PH", { month: "short" }));
+  const eRow = (e, i) => `<div class="grid2 prow" style="grid-template-columns: 1.6fr 1fr auto; align-items:end">${fld("pe" + i, i ? "" : "Earning", inp("pe" + i, e.n, 'maxlength="40" placeholder="e.g. PERA"'))}${fld("pa" + i, i ? "" : "Per payday", money("pa" + i, e.a))}<button type="button" class="btn small ghost" data-act="psdel" data-k="e" data-i="${i}" aria-label="Remove">✕</button></div>`;
+  const bRow = (b, i) => `<div class="grid2 prow" style="grid-template-columns: 1.4fr 1fr 0.9fr auto; align-items:end">${fld("bn" + i, i ? "" : "Bonus", inp("bn" + i, b.n, 'maxlength="40" placeholder="e.g. Year-end bonus"'))}${fld("ba" + i, i ? "" : "Amount", money("ba" + i, b.a))}${fld("bm" + i, i ? "" : "Usually in", `<select id="bm${i}"><option value="">—</option>${MON.map((m, j) => `<option value="${j + 1}"${+b.m === j + 1 ? " selected" : ""}>${m}</option>`).join("")}</select>`)}<button type="button" class="btn small ghost" data-act="psdel" data-k="b" data-i="${i}" aria-label="Remove">✕</button></div>`;
+  openSheet("Your payslip", `
+    <div class="grid3">${fld("psPos", "Position", inp("psPos", slip.position, 'maxlength="60" placeholder="e.g. Project Officer I"'))}${fld("psSG", "Salary grade", inp("psSG", slip.grade, 'maxlength="6"'))}${fld("psStep", "Step", inp("psStep", slip.step, 'maxlength="4"'))}</div>
+    <div class="grid3">${fld("psEff", "Effective", inp("psEff", slip.effective || todayStr(), 'type="date"'))}${fld("psA", "1st payday", `<select id="psA">${dayOpts(pa)}</select>`)}${fld("psB", "2nd payday", `<select id="psB">${dayOpts(pb)}</select>`)}</div>
+    <div class="lbl" style="margin:6px 0 4px">Earnings per payday</div>
+    <div id="psE">${earn.map(eRow).join("")}</div>
+    <div><button type="button" class="btn small" data-act="psadd" data-k="e">Add an earning</button></div>
+    <div class="lbl" style="margin:12px 0 4px">Deductions per payday</div>
+    <div class="grid2">${DED.slice(0, 4).map(([k, l]) => fld("pd_" + k, l, money("pd_" + k, ded[k]))).join("")}</div>
+    <details style="margin-top:4px"><summary class="note" style="cursor:pointer">Regular coop, HMO or other deductions</summary><div class="grid2" style="margin-top:6px">${DED.slice(4, 7).map(([k, l]) => fld("pd_" + k, l, money("pd_" + k, ded[k]))).join("")}${fld("pd_other", "Other deductions", money("pd_other", ded.other))}</div></details>
+    <div class="callout" style="display:flex;justify-content:space-between;margin-top:10px"><span>Take-home per payday</span><b id="psNet"></b></div>
+    ${fld("psEmp", "Employer share a month (optional)", money("psEmp", slip.employer))}
+    <div class="lbl" style="margin:12px 0 4px">Yearly bonuses</div>
+    <div id="psB2">${(bon.length ? bon : [{ n: "", a: "", m: "" }]).map(bRow).join("")}</div>
+    <div><button type="button" class="btn small" data-act="psadd" data-k="b">Add a bonus</button></div>
+    ${fld("psNotes", "Notes (optional)", inp("psNotes", slip.notes, 'maxlength="200" placeholder="e.g. Leave: 15 VL, 15 SL, 5 wellness, 3 special"'))}
+    <p class="note">Amounts are what appears on each payday's payslip. Changing the payslip doesn't touch paydays you've already logged.</p>`,
+    async () => {
+      const read = readSlipForm();
+      if (!read.earnings.length) return shErr("Add at least one earning, like Basic pay.");
+      const c = slipCalc(read); if (!(c.net > 0)) return shErr("Deductions are larger than gross pay. Check the numbers.");
+      const st = Object.assign(clone(DEFAULT_SETTINGS), S.settings || {}); const sal = Object.assign({}, st.salary);
+      sal.slip = read; sal.payDays = [Number(val("psA")), Number(val("psB"))]; sal.perCutoff = c.gross;
+      st.salary = sal;
+      if (await act(() => store.saveSettings(st), "Payslip saved · " + fmt(c.net) + " per payday")) closeSheet();
+    });
+  const calc = () => { const c = slipCalc(readSlipForm()); $("psNet").textContent = fmt(c.net) + "  ·  " + fmt(c.month) + " a month"; };
+  $("sheetForm").addEventListener("input", calc); $("sheetForm").addEventListener("change", calc); calc();
+  PSFORM = { eRow, bRow };
+}
+let PSFORM = null;
+function readSlipForm() {
+  const earnings = []; for (let i = 0; $("pe" + i); i++) { const n = val("pe" + i).trim(); const a = num(val("pa" + i)); if (n && a > 0) earnings.push({ n, a }); }
+  const bonuses = []; for (let i = 0; $("bn" + i); i++) { const n = val("bn" + i).trim(); const a = num(val("ba" + i)); if (n && a > 0) bonuses.push({ n, a, m: Number(val("bm" + i)) || "" }); }
+  const ded = {}; DED.forEach(([k]) => { if ($("pd_" + k)) { const a = num(val("pd_" + k)); if (a > 0) ded[k] = a; } });
+  return { position: val("psPos").trim(), grade: val("psSG").trim(), step: val("psStep").trim(), effective: val("psEff"), earnings, ded, employer: num(val("psEmp")) > 0 ? num(val("psEmp")) : "", bonuses, notes: val("psNotes").trim() };
+}
+function psRows(kind, drop) {
+  const keep = []; const pre = kind === "e" ? ["pe", "pa"] : ["bn", "ba", "bm"];
+  for (let i = 0; $(pre[0] + i); i++) { if (i === drop) continue; keep.push(kind === "e" ? { n: val("pe" + i), a: val("pa" + i) } : { n: val("bn" + i), a: val("ba" + i), m: val("bm" + i) }); }
+  return keep;
+}
+
+function sheetSalary(v, t) {
+  const s = v.settings.salary || {}; const slip = slipOf(v); const d = t && t.details || {};
+  const [pa, pb] = payDays(); const today = todayStr(); const dn = Number(today.slice(8));
+  const cut = t ? d.cut : (dn >= (pa + Math.min(pb, 30)) / 2 ? "B" : "A");
+  const last = v.txns.filter((x) => x.category === "Salary" && x.details).sort((a, b) => b.date.localeCompare(a.date))[0];
+  /* earnings: what this payday had, else the payslip, else one gross line */
+  const earn = t ? (d.earn && d.earn.length ? d.earn : [{ n: "Gross pay", a: d.gross }]) : slip ? slip.earnings : [{ n: "Gross pay", a: s.perCutoff || (last ? dget(last, "gross") : "") }];
+  const pre = t ? d : Object.assign({}, slip ? slip.ded : {}, last && !slip ? { tax: dget(last, "tax"), hmo: dget(last, "hmo") } : {}, last ? { equity: dget(last, "equity") || (slip && slip.ded.equity) || "", coop: dget(last, "coop") || (slip && slip.ded.coop) || "" } : {}, { tardy: "", absent: "", other: (slip && slip.ded.other) || "" });
+  const mv = t ? v.txns.find((x) => x.link && x.link.kind === "salarymove" && x.link.id === t.id) : null;
+  const mvFee = mv ? v.txns.find((x) => x.link && x.link.kind === "fee" && x.link.id === mv.id) : null;
+  const expected = slip ? slipCalc(slip).net : 0;
+  openSheet(t ? "Edit payday" : "Log a payday", `
+    <div class="grid2">${fld("sDate", "Payday", inp("sDate", t ? t.date : payDate(ymOf(today), cut) <= today ? payDate(ymOf(today), cut) : today, 'type="date"'))}${fld("sCut", "Cutoff", `<select id="sCut"><option value="A"${cut === "A" ? " selected" : ""}>${esc(cutName("A"))}</option><option value="B"${cut === "B" ? " selected" : ""}>${esc(cutName("B"))}</option></select>`)}</div>
+    <div class="lbl" style="margin:4px 0 2px">Earnings</div>
+    <div class="grid2">${earn.map((e, i) => fld("se" + i, e.n, money("se" + i, e.a)) + `<input type="hidden" id="sn${i}" value="${esc(e.n)}">`).join("")}</div>
+    <div class="lbl" style="margin:8px 0 2px">Deductions</div>
+    <div class="grid2">${DED.map(([k, l]) => fld("s_" + k, l, money("s_" + k, pre[k]))).join("")}</div>
+    <div class="callout" style="margin-top:0;display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px"><span>Take-home <span class="note" id="sCmp"></span></span><b id="sNet">${fmt(0)}</b></div>
+    <div class="grid2">${fld("sAcct", "Credited to", `<select id="sAcct">${acctOpts(v, t ? t.account : s.account, (a) => ["bank", "ewallet"].includes(a.type))}</select>`)}${fld("sMove", "Then move it to", `<select id="sMove"><option value="">Don't move it</option>${acctOpts(v, mv ? mv.to : t ? "" : s.moveTo, (a) => ["bank", "ewallet", "savings"].includes(a.type))}</select>`)}</div>
+    <div id="sMoveWrap" class="grid2">${fld("sMoveAmt", "Amount moved", money("sMoveAmt", mv ? mv.amount : ""))}${fld("sMoveFee", "Transfer fee (optional)", money("sMoveFee", mvFee ? mvFee.amount : ""))}</div>
+    ${slip ? "" : `<p class="note">Tip: set up your payslip on the Salary tab and every payday fills in by itself.</p>`}`,
+    async () => {
+      const lines = earn.map((e, i) => ({ n: val("sn" + i), a: num(val("se" + i)) || 0 }));
+      const det = { cut: val("sCut"), gross: r2(sum(lines, (e) => e.a)), earn: lines.length > 1 || (lines[0] && lines[0].n !== "Gross pay") ? lines : [] };
+      DED.forEach(([k]) => (det[k] = num(val("s_" + k)) || 0));
+      if (!(det.gross > 0)) return shErr("Enter your earnings for this payday.");
+      const net = r2(det.gross - sum(DED, ([k]) => det[k]));
+      if (!(net > 0)) return shErr("Deductions are larger than gross pay. Check the numbers.");
+      const nt = { id: t ? t.id : newId("t"), date: val("sDate"), type: "income", amount: net, account: val("sAcct"), category: "Salary", note: cutName(det.cut) + " payday", link: { kind: "salary" }, details: det, createdAt: t ? t.createdAt || Date.now() : Date.now() };
+      const moveTo = val("sMove"), moveAmt = moveTo ? num(val("sMoveAmt")) : 0, moveFee = moveTo && val("sMoveFee").trim() ? num(val("sMoveFee")) : 0;
+      if (moveTo && moveTo === nt.account) return shErr("Choose a different account to move your pay to.");
+      if (moveTo && !(moveAmt > 0)) return shErr("Enter how much you moved.");
+      if (moveTo && moveAmt > net) return shErr("You can't move more than the take-home of " + fmt(net) + ".");
+      if (!(moveFee >= 0)) return shErr("Enter the fee as a number, or leave it blank.");
+      if (await act(async () => {
+        await store.put("txns", nt);
+        if (moveTo) {
+          const mid = mv ? mv.id : newId("t");
+          await store.put("txns", { id: mid, date: nt.date, type: "transfer", account: nt.account, to: moveTo, amount: moveAmt, category: "Transfer", note: "Pay moved to " + acctName(v, moveTo), link: { kind: "salarymove", id: nt.id }, createdAt: mv ? mv.createdAt || Date.now() : Date.now() });
+          if (moveFee > 0) await store.put("txns", { id: mvFee ? mvFee.id : newId("t"), date: nt.date, type: "expense", account: nt.account, amount: moveFee, category: "Bank fees", note: "Transfer fee", link: { kind: "fee", id: mid }, createdAt: Date.now() });
+          else if (mvFee) await store.del("txns", mvFee.id);
+        } else if (mv) { if (mvFee) await store.del("txns", mvFee.id); await store.del("txns", mv.id); }
+        const st = Object.assign(clone(DEFAULT_SETTINGS), S.settings || {}); const sal = Object.assign({}, st.salary);
+        if (!t) { sal.perCutoff = det.gross; sal.account = nt.account; }
+        sal.moveTo = moveTo;
+        if (JSON.stringify(sal) !== JSON.stringify(st.salary)) { st.salary = sal; await store.saveSettings(st); }
+      }, t ? "Payday updated" : "Payday logged: " + fmt(net) + (moveTo ? " · moved to " + acctName(v, moveTo) : ""))) closeSheet();
+    }, t ? delBtn : "");
+  let moveEdited = !!mv;
+  const calc = () => {
+    const g = r2(earn.reduce((m, e, i) => m + (num(val("se" + i)) || 0), 0)); const n = r2(g - sum(DED, ([k]) => num(val("s_" + k)) || 0)); $("sNet").textContent = fmt(n);
+    $("sCmp").textContent = expected ? (Math.abs(n - expected) < 0.01 ? "· matches your payslip" : n < expected ? "· " + fmt(r2(expected - n)) + " less than your payslip" : "· " + fmt(r2(n - expected)) + " more than your payslip") : "";
+    $("sMoveWrap").hidden = !val("sMove");
+    if (!moveEdited && val("sMove")) $("sMoveAmt").value = n > 0 ? n.toFixed(2) : "";
+  };
+  $("sheetForm").addEventListener("input", (e) => { if (e.target.id === "sMoveAmt") moveEdited = true; calc(); });
+  $("sheetForm").addEventListener("change", calc); calc();
+  sheetDelete = t ? async () => { if (await act(async () => { if (mv) { if (mvFee) await store.del("txns", mvFee.id); await store.del("txns", mv.id); } await store.del("txns", t.id); }, "Payday removed")) closeSheet(); } : null;
+}
+
 /* keep a dated debt total so the history chart grows as you use the app */
 async function recordDebt() {
   if (V().demo || !S.settingsExists) return;
@@ -3204,6 +3359,15 @@ document.addEventListener("click", async (e) => {
     case "editloan": sheetLoan(v, v.loans.find((l) => l.id === id)); break;
     case "loanpay": sheetLoanPay(v, v.loans.find((l) => l.id === id)); break;
     case "newsalary": sheetSalary(v, null); break;
+    case "payslip": sheetPayslip(v); break;
+    case "paydays": sheetPaydays(v); break;
+    case "psadd": case "psdel": {
+      const k = el.dataset.k; const rows = psRows(k, el.dataset.act === "psdel" ? Number(el.dataset.i) : -1);
+      if (el.dataset.act === "psadd") rows.push(k === "e" ? { n: "", a: "" } : { n: "", a: "", m: "" });
+      if (k === "b" && !rows.length) rows.push({ n: "", a: "", m: "" });
+      $(k === "e" ? "psE" : "psB2").innerHTML = rows.map(k === "e" ? PSFORM.eRow : PSFORM.bRow).join(""); $("sheetForm").dispatchEvent(new Event("input")); break;
+    }
+    case "logbonus": { sheetIncome(v, null); const c = $("iCat"); if (c) [...c.options].forEach((o) => { if (o.value === "13th month & bonus") c.value = o.value; }); $("iAmt").value = el.dataset.a; $("iNote").value = el.dataset.n; const sa = (v.settings.salary || {}).account; if (sa && $("iAcct")) $("iAcct").value = sa; break; }
     case "editsalary": sheetSalary(v, v.txns.find((t) => t.id === id)); break;
     case "newincome": sheetIncome(v, null); break;
     case "editincome": sheetIncome(v, v.txns.find((t) => t.id === id)); break;
