@@ -29,6 +29,10 @@ Live site: https://isacad1.github.io/prudence/
 
 Prudence asks only for `drive.file`: it can see and edit files it created itself, nothing else in your Drive.
 
+## Overview
+
+Overview is all time: net worth today, total income, total spent and what you've kept since your first entry; income by month (salary and other income side by side, with the month's total over each pair); income vs spending; debt over time; a treemap of where your money went; your goals; and balances.
+
 ## Salary and payslip
 
 On the Salary tab, **Your payslip** holds your pay structure: position, grade and step, each earning per payday (basic pay, PERA, rice allowance, medical…), the regular deductions (GSIS, Pag-IBIG, PhilHealth, withholding tax, plus any regular coop or HMO), your employer's monthly share, yearly bonuses with the month they usually arrive, and notes such as leave credits. It also sets your two paydays (for example the 10th and 25th); bill and loan cutoffs follow them across the app. **Log payday** fills in every line from the payslip, shows whether the take-home matches it, and has fields for one-offs like tardiness or a coop loan. Bonuses can be logged in one tap, and bonuses due before a debt-free date are shown in the goal plan.
@@ -57,7 +61,7 @@ Track work expenses until your employer pays you back: meeting meals (with a per
 
 ## Housemate billing
 
-On the House tab, **Housemate billing** shows each housemate's share of the month's rent, electricity, water and internet. Set each person's rent split under Housemates & splits (for example 1/2); the month's rent carries over from the previous month when you log a new one. Tap a name to see the computation (for example ₱2,262.63 ÷ 3 = ₱754.21), copy a ready-to-send message, save the statement as an image or PDF to send (on a phone this opens the share sheet for Messenger, Viber or Photos), and mark it paid. Marking paid asks which account the money went into, so that account's balance goes up. Shares marked paid in older versions without an account are listed so you can add them. Splits accept fractions like 1/3, so shares match an exact three-way split.
+On the House tab, **Housemate billing** shows each housemate's share of the month's rent, electricity, water and internet. Each month can have the electricity rate per kWh from the bill (up to 4 decimals); without it, Prudence uses bill ÷ kWh. Set each person's rent split under Housemates & splits (for example 1/2); the month's rent carries over from the previous month when you log a new one. Tap a name to see the computation (for example ₱2,262.63 ÷ 3 = ₱754.21), copy a ready-to-send message, save the statement as an image or PDF to send (on a phone this opens the share sheet for Messenger, Viber or Photos), and mark it paid. Marking paid asks which account the money went into, so that account's balance goes up. Shares marked paid in older versions without an account are listed so you can add them. Splits accept fractions like 1/3, so shares match an exact three-way split.
 
 ## Account registers
 

@@ -305,6 +305,19 @@ button.rrow { cursor: pointer; } button.rrow:hover { background: var(--surface-2
 .prow .field { margin-bottom: 4px; } .prow > .btn { margin-bottom: 8px; }
 @media (max-width: 560px) { .prow { grid-template-columns: 1fr 1fr auto !important; } .prow > .field:first-child { grid-column: 1 / -1; } }
 .linkbtn { border: 0; background: none; padding: 0; font: inherit; font-size: inherit; color: var(--accent); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+/* income chart: porcelain blue and pear gold, validated for color-blind separation in both modes */
+:root { --sal: #4262bc; --sal-ink: #ffffff; --oth: #d1ad46; --oth-ink: #1d2233; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --sal: #6a85dc; --sal-ink: #0f1424; --oth: #b08d2c; --oth-ink: #0f1424; } }
+:root[data-theme="dark"] { --sal: #6a85dc; --sal-ink: #0f1424; --oth: #b08d2c; --oth-ink: #0f1424; }
+.pair { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: stretch; } .pair > .panel { margin: 0; display: flex; flex-direction: column; } .pair > .panel .chart { flex: 1; }
+@media (max-width: 900px) { .pair { grid-template-columns: minmax(0, 1fr); } }
+.catgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 28px; } @media (max-width: 720px) { .catgrid { grid-template-columns: minmax(0, 1fr); } }
+.hscroll { overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: thin; }
+.goalsec .gmini + .gmini { border-top: 1px solid var(--line); margin-top: 14px; padding-top: 14px; }
+.gmini h3 { margin: 2px 0 0; font-size: 1.05rem; }
+.gsplit { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr); gap: 24px; align-items: start; } .gsplit .gfacts { flex-direction: column; gap: 6px; margin-top: 10px; }
+@media (max-width: 900px) { .gsplit { grid-template-columns: minmax(0, 1fr); gap: 8px; } .gsplit .gfacts { flex-direction: row; } }
+.gfacts { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 0.88rem; color: var(--muted); margin: 6px 0 4px; } .gfacts b { color: var(--ink); font-weight: 600; }
 .bout { margin-top: 8px; } .bout img { width: 100%; max-width: 420px; border: 1px solid var(--line); border-radius: 10px; display: block; margin-bottom: 6px; }
 .vlist { display: flex; flex-direction: column; gap: 18px; }
 .vcard + .vcard { border-top: 1px dashed var(--line); padding-top: 16px; }
@@ -444,6 +457,9 @@ const dLabel = (d) => { const [y, m, dd] = d.split("-").map(Number); return new 
 const dShort = (d) => { const [y, m, dd] = d.split("-").map(Number); return new Date(y, m - 1, dd).toLocaleDateString("en-PH", { month: "short", day: "numeric" }); };
 const daysBetween = (a, b) => { const p = (s) => { const [y, m, d] = s.split("-").map(Number); return Date.UTC(y, m - 1, d); }; return Math.round((p(b) - p(a)) / 86400000); };
 const dueDate = (ym, cyc) => payDate(ym, cyc);
+/* the rate printed on the bill when you've entered it; otherwise bill ÷ kWh */
+const rateTxt = (u) => { const r = kwhRate(u); return r ? "₱" + r.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: +u.elecRate > 0 ? 4 : 2 }) : ""; };
+const kwhRate = (u) => (+u.elecRate > 0 ? +u.elecRate : +u.elec > 0 && +u.kwh > 0 ? r2(+u.elec / +u.kwh) : 0);
 const CYC = { get A() { return cutName("A"); }, get B() { return cutName("B"); }, get AB() { return cutName("AB"); } };
 const plural = (n, w) => n + " " + w + (n === 1 ? "" : "s");
 const clone = (o) => JSON.parse(JSON.stringify(o));
@@ -509,7 +525,7 @@ const auth = {
 };
 
 /* ============ Google Sheets + Drive APIs ============ */
-const SCHEMA = {"Transactions": {"sheet": "Transactions", "cols": [["id", "ID", "text"], ["date", "Date", "date"], ["type", "Type", "text"], ["category", "Category", "text"], ["amount", "Amount (PHP)", "money"], ["account", "Account ID", "text"], ["accountName", "Account", "text"], ["to", "To account ID", "text"], ["toName", "To account", "text"], ["note", "Note", "text"], ["linkKind", "Linked to", "text"], ["linkId", "Linked ID", "text"], ["period", "Cutoff", "text"], ["gross", "Gross pay", "money"], ["tax", "Withholding tax", "money"], ["hmo", "HMO", "money"], ["equity", "Coop equity", "money"], ["coop", "Coop loan", "money"], ["tardy", "Tardy & undertime", "money"], ["absent", "Absences", "money"], ["other", "Other deductions", "money"], ["createdAt", "Created", "int"], ["receipts", "Receipts", "text"], ["gsis", "GSIS", "money"], ["hdmf", "Pag-IBIG (HDMF)", "money"], ["phic", "PhilHealth", "money"], ["earn", "Earnings breakdown", "text"]]}, "Bills": {"sheet": "Bills", "cols": [["id", "ID", "text"], ["name", "Bill", "text"], ["amount", "Usual amount (PHP)", "money"], ["cycle", "Cutoff", "text"], ["category", "Category", "text"], ["payTo", "Pays account ID", "text"], ["payToName", "Pays account", "text"], ["active", "Active", "text"]]}, "Loans": {"sheet": "Loans", "cols": [["id", "ID", "text"], ["name", "Loan", "text"], ["lender", "Lender", "text"], ["balance", "Balance (PHP)", "money"], ["asOf", "Balance as of", "date"], ["payment", "Payment each due (PHP)", "money"], ["cycle", "Due on", "text"], ["left", "Payments left", "int"], ["original", "Original total (PHP)", "money"]]}, "Accounts": {"sheet": "Accounts", "cols": [["id", "ID", "text"], ["name", "Account", "text"], ["type", "Type", "text"], ["opening", "Opening balance (PHP)", "money"]]}, "People": {"sheet": "Owed to me", "cols": [["id", "ID", "text"], ["name", "Person", "text"], ["start", "Owed at start (PHP)", "money"], ["startDate", "As of", "date"]]}, "OwedEntries": {"sheet": "Owed history", "cols": [["id", "ID", "text"], ["personId", "Person ID", "text"], ["personName", "Person", "text"], ["d", "Date", "date"], ["k", "Entry", "text"], ["a", "Amount (PHP)", "money"], ["n", "Note", "text"]]}, "Utilities": {"sheet": "Utilities", "cols": [["id", "Month", "month"], ["elec", "Electricity (PHP)", "money"], ["kwh", "kWh", "num"], ["elecFee", "Electricity fee (PHP)", "money"], ["water", "Water (PHP)", "money"], ["cum", "cu.m.", "num"], ["waterFee", "Water fee (PHP)", "money"], ["internet", "Internet (PHP)", "money"], ["paid", "Housemates paid", "text"], ["receipts", "Receipts", "text"], ["elecPeriod", "Electricity period", "text"], ["waterPeriod", "Water period", "text"], ["payBy", "Housemates pay by", "date"], ["rent", "Rent (PHP)", "money"]]}, "Settings": {"sheet": "Settings", "cols": [["key", "Key", "text"], ["value", "Value", "text"]]}, "Reimb": {"sheet": "Reimbursements", "cols": [["id", "ID", "text"], ["date", "Date", "date"], ["event", "Meeting / event", "text"], ["vendor", "Purchased from", "text"], ["rtype", "Type", "text"], ["amount", "Amount (PHP)", "money"], ["account", "Paid from ID", "text"], ["accountName", "Paid from", "text"], ["headcount", "Headcount", "int"], ["attendees", "Staff attendees", "text"], ["receipts", "Receipts", "text"], ["claimed", "Claimed", "text"], ["claimedDate", "Claimed on", "date"], ["received", "Received (PHP)", "money"], ["toAccount", "Received in ID", "text"], ["toAccountName", "Received in", "text"], ["outcome", "Excess outcome", "text"], ["staffShare", "Each staff share (PHP)", "money"], ["myShare", "My share (PHP)", "money"], ["staffEntries", "Staff charge IDs", "text"]]}, "Values": {"sheet": "Account values", "cols": [["id", "ID", "text"], ["accountId", "Account ID", "text"], ["accountName", "Account", "text"], ["date", "As of", "date"], ["value", "Value (PHP)", "money"], ["note", "Note", "text"]]}, "Premiums": {"sheet": "Premiums", "cols": [["id", "ID", "text"], ["accountId", "Account ID", "text"], ["accountName", "Policy / account", "text"], ["date", "Paid on", "date"], ["amount", "Premium (PHP)", "money"], ["from", "Paid from ID", "text"], ["fromName", "Paid from", "text"], ["note", "Note", "text"]]}, "Shop": {"sheet": "Shopping list", "cols": [["id", "ID", "text"], ["name", "Item", "text"], ["cat", "Category", "text"], ["qty", "Qty", "num"], ["unit", "Unit", "text"], ["est", "Price each (PHP)", "money"], ["store", "Store", "text"], ["need", "On list", "text"], ["cart", "In cart", "text"], ["paid", "Paid (PHP)", "money"], ["lastPrice", "Last price", "money"], ["prevPrice", "Price before", "money"], ["lastDate", "Last bought", "date"], ["lastStore", "Last store", "text"], ["every", "Every (days)", "int"], ["note", "Note", "text"]]}};
+const SCHEMA = {"Transactions": {"sheet": "Transactions", "cols": [["id", "ID", "text"], ["date", "Date", "date"], ["type", "Type", "text"], ["category", "Category", "text"], ["amount", "Amount (PHP)", "money"], ["account", "Account ID", "text"], ["accountName", "Account", "text"], ["to", "To account ID", "text"], ["toName", "To account", "text"], ["note", "Note", "text"], ["linkKind", "Linked to", "text"], ["linkId", "Linked ID", "text"], ["period", "Cutoff", "text"], ["gross", "Gross pay", "money"], ["tax", "Withholding tax", "money"], ["hmo", "HMO", "money"], ["equity", "Coop equity", "money"], ["coop", "Coop loan", "money"], ["tardy", "Tardy & undertime", "money"], ["absent", "Absences", "money"], ["other", "Other deductions", "money"], ["createdAt", "Created", "int"], ["receipts", "Receipts", "text"], ["gsis", "GSIS", "money"], ["hdmf", "Pag-IBIG (HDMF)", "money"], ["phic", "PhilHealth", "money"], ["earn", "Earnings breakdown", "text"]]}, "Bills": {"sheet": "Bills", "cols": [["id", "ID", "text"], ["name", "Bill", "text"], ["amount", "Usual amount (PHP)", "money"], ["cycle", "Cutoff", "text"], ["category", "Category", "text"], ["payTo", "Pays account ID", "text"], ["payToName", "Pays account", "text"], ["active", "Active", "text"]]}, "Loans": {"sheet": "Loans", "cols": [["id", "ID", "text"], ["name", "Loan", "text"], ["lender", "Lender", "text"], ["balance", "Balance (PHP)", "money"], ["asOf", "Balance as of", "date"], ["payment", "Payment each due (PHP)", "money"], ["cycle", "Due on", "text"], ["left", "Payments left", "int"], ["original", "Original total (PHP)", "money"]]}, "Accounts": {"sheet": "Accounts", "cols": [["id", "ID", "text"], ["name", "Account", "text"], ["type", "Type", "text"], ["opening", "Opening balance (PHP)", "money"]]}, "People": {"sheet": "Owed to me", "cols": [["id", "ID", "text"], ["name", "Person", "text"], ["start", "Owed at start (PHP)", "money"], ["startDate", "As of", "date"]]}, "OwedEntries": {"sheet": "Owed history", "cols": [["id", "ID", "text"], ["personId", "Person ID", "text"], ["personName", "Person", "text"], ["d", "Date", "date"], ["k", "Entry", "text"], ["a", "Amount (PHP)", "money"], ["n", "Note", "text"]]}, "Utilities": {"sheet": "Utilities", "cols": [["id", "Month", "month"], ["elec", "Electricity (PHP)", "money"], ["kwh", "kWh", "num"], ["elecFee", "Electricity fee (PHP)", "money"], ["water", "Water (PHP)", "money"], ["cum", "cu.m.", "num"], ["waterFee", "Water fee (PHP)", "money"], ["internet", "Internet (PHP)", "money"], ["paid", "Housemates paid", "text"], ["receipts", "Receipts", "text"], ["elecPeriod", "Electricity period", "text"], ["waterPeriod", "Water period", "text"], ["payBy", "Housemates pay by", "date"], ["rent", "Rent (PHP)", "money"], ["elecRate", "Rate per kWh (PHP)", "num"]]}, "Settings": {"sheet": "Settings", "cols": [["key", "Key", "text"], ["value", "Value", "text"]]}, "Reimb": {"sheet": "Reimbursements", "cols": [["id", "ID", "text"], ["date", "Date", "date"], ["event", "Meeting / event", "text"], ["vendor", "Purchased from", "text"], ["rtype", "Type", "text"], ["amount", "Amount (PHP)", "money"], ["account", "Paid from ID", "text"], ["accountName", "Paid from", "text"], ["headcount", "Headcount", "int"], ["attendees", "Staff attendees", "text"], ["receipts", "Receipts", "text"], ["claimed", "Claimed", "text"], ["claimedDate", "Claimed on", "date"], ["received", "Received (PHP)", "money"], ["toAccount", "Received in ID", "text"], ["toAccountName", "Received in", "text"], ["outcome", "Excess outcome", "text"], ["staffShare", "Each staff share (PHP)", "money"], ["myShare", "My share (PHP)", "money"], ["staffEntries", "Staff charge IDs", "text"]]}, "Values": {"sheet": "Account values", "cols": [["id", "ID", "text"], ["accountId", "Account ID", "text"], ["accountName", "Account", "text"], ["date", "As of", "date"], ["value", "Value (PHP)", "money"], ["note", "Note", "text"]]}, "Premiums": {"sheet": "Premiums", "cols": [["id", "ID", "text"], ["accountId", "Account ID", "text"], ["accountName", "Policy / account", "text"], ["date", "Paid on", "date"], ["amount", "Premium (PHP)", "money"], ["from", "Paid from ID", "text"], ["fromName", "Paid from", "text"], ["note", "Note", "text"]]}, "Shop": {"sheet": "Shopping list", "cols": [["id", "ID", "text"], ["name", "Item", "text"], ["cat", "Category", "text"], ["qty", "Qty", "num"], ["unit", "Unit", "text"], ["est", "Price each (PHP)", "money"], ["store", "Store", "text"], ["need", "On list", "text"], ["cart", "In cart", "text"], ["paid", "Paid (PHP)", "money"], ["lastPrice", "Last price", "money"], ["prevPrice", "Price before", "money"], ["lastDate", "Last bought", "date"], ["lastStore", "Last store", "text"], ["every", "Every (days)", "int"], ["note", "Note", "text"]]}};
 const COLLS = ["txns", "bills", "loans", "people", "utilities", "reimb", "values", "premiums", "shop"];
 const KEYCOL = { Settings: "key", Utilities: "id" };
 const keyOf = (T) => KEYCOL[T] || "id";
@@ -732,7 +748,7 @@ const model = {
     const loans = (t.Loans || []).map((r) => ({ id: r.id, name: r.name, lender: r.lender || "", balance: r.balance || 0, asOf: r.asOf || todayStr(), payment: r.payment || 0, cycle: txtCyc(r.cycle || "15th"), left: r.left || 0, original: r.original || r.balance || 0 }));
     const entries = {}; (t.OwedEntries || []).forEach((r) => { (entries[r.personId] = entries[r.personId] || []).push({ id: r.id, d: r.d, k: r.k === "Lent" ? "lend" : "repay", a: r.a || 0, n: r.n || "" }); });
     const people = (t.People || []).map((r) => ({ id: r.id, name: r.name, start: r.start || 0, startDate: r.startDate || todayStr(), entries: entries[r.id] || [] }));
-    const utilities = (t.Utilities || []).map((r) => { const paid = {}; String(r.paid || "").split(",").map((s) => s.trim()).filter(Boolean).forEach((n) => (paid[n] = true)); return { id: r.id, elec: r.elec || 0, kwh: r.kwh || 0, elecFee: r.elecFee || 0, water: r.water || 0, cum: r.cum || 0, waterFee: r.waterFee || 0, internet: r.internet || 0, paid, receipts: txtToRc(r.receipts), elecPeriod: r.elecPeriod || "", waterPeriod: r.waterPeriod || "", payBy: r.payBy || "", rent: r.rent || 0 }; });
+    const utilities = (t.Utilities || []).map((r) => { const paid = {}; String(r.paid || "").split(",").map((s) => s.trim()).filter(Boolean).forEach((n) => (paid[n] = true)); return { id: r.id, elec: r.elec || 0, kwh: r.kwh || 0, elecFee: r.elecFee || 0, water: r.water || 0, cum: r.cum || 0, waterFee: r.waterFee || 0, internet: r.internet || 0, paid, receipts: txtToRc(r.receipts), elecPeriod: r.elecPeriod || "", waterPeriod: r.waterPeriod || "", payBy: r.payBy || "", rent: r.rent || 0, elecRate: r.elecRate || "" }; });
     const list = (x) => String(x || "").split(",").map((s) => s.trim()).filter(Boolean);
     const reimb = (t.Reimb || []).map((r) => ({ id: r.id, date: r.date || todayStr(), event: r.event || "", vendor: r.vendor || "", rtype: REIMB_TYPES.includes(r.rtype) ? r.rtype : "Other", amount: r.amount || 0, account: r.account || "", headcount: r.headcount || "", attendees: list(r.attendees), receipts: txtToRc(r.receipts), claimed: r.claimed === "Yes", claimedDate: r.claimedDate || "", received: r.received, toAccount: r.toAccount || "", outcome: r.outcome || "", staffShare: r.staffShare, myShare: r.myShare, staffEntries: list(r.staffEntries) }));
     const values = (t.Values || []).map((r) => ({ id: r.id, accountId: r.accountId || "", date: r.date || todayStr(), value: r.value || 0, note: r.note || "" }));
@@ -749,7 +765,7 @@ const model = {
     }
     if (c === "bills") return [["Bills", { id: o.id, name: o.name, amount: o.amount, cycle: CYC_TXT[o.cycle], category: o.category, payTo: o.payTo || "", payToName: o.payTo ? this.acct(o.payTo).name || "" : "", active: o.active === false ? "No" : "Yes" }]];
     if (c === "loans") return [["Loans", { id: o.id, name: o.name, lender: o.lender, balance: o.balance, asOf: o.asOf, payment: o.payment, cycle: CYC_TXT[o.cycle], left: o.left, original: o.original }]];
-    if (c === "utilities") return [["Utilities", { id: o.id, elec: o.elec, kwh: o.kwh, elecFee: o.elecFee, water: o.water, cum: o.cum, waterFee: o.waterFee, internet: o.internet, paid: Object.keys(o.paid || {}).filter((k) => o.paid[k]).join(", "), receipts: rcToTxt(o.receipts), elecPeriod: o.elecPeriod || "", waterPeriod: o.waterPeriod || "", payBy: o.payBy || "", rent: o.rent || 0 }]];
+    if (c === "utilities") return [["Utilities", { id: o.id, elec: o.elec, kwh: o.kwh, elecFee: o.elecFee, water: o.water, cum: o.cum, waterFee: o.waterFee, internet: o.internet, paid: Object.keys(o.paid || {}).filter((k) => o.paid[k]).join(", "), receipts: rcToTxt(o.receipts), elecPeriod: o.elecPeriod || "", waterPeriod: o.waterPeriod || "", payBy: o.payBy || "", rent: o.rent || 0, elecRate: o.elecRate || "" }]];
     if (c === "shop") return [["Shop", { id: o.id, name: o.name, cat: o.cat, qty: o.qty, unit: o.unit || "", est: o.est, store: o.store || "", need: o.need ? "Yes" : "", cart: o.cart ? "Yes" : "", paid: o.cart ? o.paid : "", lastPrice: o.lastPrice, prevPrice: o.prevPrice, lastDate: o.lastDate || "", lastStore: o.lastStore || "", every: o.every || "", note: o.note || "" }]];
     if (c === "premiums") return [["Premiums", { id: o.id, accountId: o.accountId, accountName: this.acct(o.accountId).name || "", date: o.date, amount: o.amount, from: o.from || "", fromName: o.from ? this.acct(o.from).name || "" : "", note: o.note || "" }]];
     if (c === "values") return [["Values", { id: o.id, accountId: o.accountId, accountName: this.acct(o.accountId).name || "", date: o.date, value: o.value, note: o.note || "" }]];
@@ -1055,6 +1071,9 @@ function render() {
   if (S.tab !== "accounts") S.acctView = null;
   const fn = { overview: tOverview, goals: tGoals, shop: tShop, daily: tDaily, bills: tBills, loans: tLoans, salary: tSalary, owed: tOwed, reimb: tReimb, house: tHouse, accounts: tAccounts }[S.tab] || tOverview;
   $("main").innerHTML = banner + fn(v);
+  /* Overview is all time; the month picker only applies to the other tabs */
+  const mn = document.querySelector(".month-nav"); if (mn) mn.style.visibility = S.tab === "overview" ? "hidden" : "";
+  document.querySelectorAll(".hscroll").forEach((e) => (e.scrollLeft = e.scrollWidth));
   $("fab").hidden = S.tab === "daily" || S.tab === "shop" || S.mode !== "ready";
 }
 const acctName = (v, id) => (v.settings.accounts.find((a) => a.id === id) || {}).name || "—";
@@ -1078,133 +1097,6 @@ function goalStrip(v) {
   const vd = sb.perDay > 0 && wk > 0 ? verdictOf(wk / (sb.perDay * el)) : { k: "ok", w: wk > 0 ? "Logged" : "Nothing logged yet" };
   return `<a class="gstrip" href="#goals"><span><span class="eyebrow">${g.type === "save" ? esc(g.name || "Savings goal") : "Debt-free by " + esc(dShort(g.target)) + ", " + g.target.slice(0, 4)}</span><b>${status}</b></span><span class="gv ${vd.k}">This week: ${vd.w} ›</span></a>`;
 }
-function tOverview(v) {
-  const bal = balances(v), mf = monthFlow(v, S.month), debt = debtNow(v, bal);
-  const owed = r2(sum(v.people, (p) => Math.max(0, personBal(p))));
-  const loansBal = r2(sum(v.loans, (l) => loanState(v, l).balance));
-  const accts = v.settings.accounts;
-  const grp = (types) => r2(sum(accts.filter((a) => types.includes(a.type)), (a) => bal[a.id] || 0));
-  const spendMoney = grp(["bank", "ewallet", "cash"]), savings = grp(["savings"]), cards = r2(-grp(["credit", "bnpl"]));
-  const netWorth = r2(spendMoney + savings - cards - loansBal);
-  const moneyIn = mf.income, moneyOut = mf.spent, left = r2(moneyIn - moneyOut);
-  const rate = moneyIn > 0 ? Math.round((left / moneyIn) * 100) : null;
-  const items = dueItems(v, S.month);
-  const unpaid = items.filter((i) => !i.paid).sort((a, b) => a.due.localeCompare(b.due));
-  const unpaidAmt = r2(sum(unpaid, (i) => Number(i.amount) || 0));
-  const asBilled = unpaid.some((i) => !i.amount);
-
-  /* cutoff cash flow: the month splits between the two paydays */
-  const ld = lastDay(S.month); const sp = cutSplit();
-  const cut = ["A", "B"].map((c) => {
-    const from = S.month + "-" + (c === "A" ? "01" : pad(sp + 1)), to = S.month + "-" + (c === "A" ? pad(sp) : pad(ld));
-    const inW = v.txns.filter((t) => t.date >= from && t.date <= to);
-    const cin = r2(sum(inW.filter((t) => t.type === "income"), (t) => +t.amount));
-    const out = r2(sum(inW.filter((t) => t.type === "expense" || (t.type === "transfer" && t.link && t.account)), (t) => +t.amount));
-    const due = r2(sum(items.filter((i) => i.cycle === c && !i.paid), (i) => Number(i.amount) || 0));
-    const salaries = v.txns.filter((t) => t.category === "Salary" && t.type === "income").sort((a, b) => b.date.localeCompare(a.date));
-    const lastPay = salaries.find((t) => t.details && t.details.cut === c) || salaries[0];
-    const pending = cin === 0 && todayStr() <= to && lastPay;
-    const exp = pending ? r2(+lastPay.amount) : 0;
-    return { c, cin, exp, out, due, left: r2(cin + exp - out - due), billed: items.some((i) => i.cycle === c && !i.paid && !i.amount) };
-  });
-  const cutMax = Math.max(1, ...cut.map((x) => Math.max(x.cin + x.exp, x.out + x.due)));
-  const cutRow = (x) => {
-    const W = (n) => Math.max(0, Math.min(100, (n / cutMax) * 100)).toFixed(1) + "%";
-    const ok = x.left >= 0;
-    return `<div class="cut">
-      <div class="cut-top"><b>${esc(cutName(x.c))} payday</b><span class="note">${x.c === "A" ? "1–" + sp : (sp + 1) + "–" + ld} ${esc(ymShort(S.month))}</span></div>
-      <div class="flow"><span class="flow-lbl">In</span><div class="flow-track"><i style="width:${W(x.cin)};background:var(--income)"></i><i style="width:${W(x.exp)};background:var(--income);opacity:.35"></i></div><span class="num">${fmt(r2(x.cin + x.exp))}</span></div>
-      <div class="flow"><span class="flow-lbl">Out</span><div class="flow-track"><i style="width:${W(x.out)};background:var(--accent)"></i><i style="width:${W(x.due)};background:var(--accent);opacity:.35"></i></div><span class="num">${fmt(r2(x.out + x.due))}</span></div>
-      <div class="cut-foot"><span class="note">${x.due ? fmt(x.due) + " still due" + (x.billed ? " + as billed" : "") : "Nothing left due"}</span><span class="pill ${ok ? "paid" : "over"}">${ok ? (x.exp ? "Should cover · " : "Covered · ") + fmt(x.left) + " left" : (x.exp ? "May fall short by " : "Short by ") + fmt(-x.left)}</span></div>
-      ${x.exp ? `<p class="note">Payday not in yet; counting your last ${esc(cutName(x.c))} take-home of ${fmt(x.exp)}.</p>` : ""}
-    </div>`;
-  };
-
-  /* six months of income vs spending */
-  const months = []; for (let k = 5; k >= 0; k--) months.push(shiftYM(S.month, -k));
-  const flows = months.map((m) => monthFlow(v, m));
-  const leftovers = flows.map((f) => r2(f.income - f.spent));
-  const withIncome = flows.filter((f) => f.income > 0);
-  const avgLeft = withIncome.length ? r2(sum(withIncome, (f) => f.income - f.spent) / withIncome.length) : 0;
-
-  /* budget pace */
-  const budgets = v.settings.budgets || {}; const bCats = Object.keys(budgets).filter((c) => budgets[c] > 0);
-  const bTotal = r2(sum(bCats, (c) => budgets[c])); const bSpent = r2(sum(bCats, (c) => mf.byCat[c] || 0));
-  const isCur = S.month === ymOf(todayStr());
-  const dayFrac = isCur ? Number(todayStr().slice(8)) / ld : S.month < ymOf(todayStr()) ? 1 : 0;
-  const pace = r2(bTotal * dayFrac); const paceDiff = r2(bSpent - pace);
-
-  /* debt */
-  const hist = (v.settings.history || []).map(([d, val]) => ({ l: dShort(d), v: val, d })).sort((a, b) => a.d.localeCompare(b.d));
-  hist.push({ l: "Today", v: debt.total, d: todayStr() });
-  const active = v.loans.filter((l) => loanState(v, l).balance > 0);
-  const ends = active.map((l) => loanEnd(v, l)).filter(Boolean).sort();
-  const soon = active.map((l) => ({ l, e: loanEnd(v, l) })).filter((x) => x.e && x.e <= shiftYM(ymOf(todayStr()), 3) + "-31");
-  const freed = r2(sum(soon, (x) => (Number(x.l.payment) || 0) * (x.l.cycle === "AB" ? 2 : 1)));
-
-  const cats = Object.entries(mf.byCat).sort((a, b) => b[1] - a[1]);
-  const catMax = cats.length ? cats[0][1] : 1;
-  const bRow = (label, val, cls, note) => `<div class="bal-row"><span>${label}${note ? `<span class="note"> · ${note}</span>` : ""}</span><span class="num ${cls || ""}">${fmt(val)}</span></div>`;
-
-  return `${goalStrip(v)}
-  <section class="panel kpis" aria-label="Snapshot">
-    <div class="kpi hero"><span class="eyebrow">Net worth</span><span class="v ${netWorth < 0 ? "neg" : ""}">${fmt(netWorth)}</span><span class="s">Accounts and savings minus all debt</span></div>
-    <div class="kpi"><span class="eyebrow">Money in · ${esc(ymShort(S.month))}</span><span class="v pos">${fmt(moneyIn)}</span><span class="s">${mf.takeHome ? fmt(mf.takeHome) + " salary" : "No payday logged yet"}</span></div>
-    <div class="kpi"><span class="eyebrow">Money out · ${esc(ymShort(S.month))}</span><span class="v">${fmt(moneyOut)}</span><span class="s">${fmt(mf.daily)} daily · ${fmt(r2(moneyOut - mf.daily - mf.workShare))} bills &amp; loans${mf.workShare ? " · " + fmt(mf.workShare) + " work costs not reimbursed" : ""}</span></div>
-    <div class="kpi"><span class="eyebrow">Left over so far</span><span class="v ${left < 0 ? "neg" : "pos"}">${fmt(left)}</span><span class="s">${rate === null ? "Log income to see your savings rate" : rate >= 0 ? rate + "% of what came in" : "Spent more than came in"}</span></div>
-  </section>
-  <div class="cols">
-    <div class="stack">
-      <section class="panel">
-        <div class="phead"><h2>Does each payday cover its bills?</h2><span class="eyebrow">${esc(ymName(S.month))}</span></div>
-        <div class="cuts">${cut.map(cutRow).join("")}</div>
-        <div class="legend" style="margin-top:10px"><span><i style="background:var(--income)"></i>Came in</span><span><i style="background:var(--income);opacity:.35"></i>Expected payday</span><span><i style="background:var(--accent)"></i>Paid out</span><span><i style="background:var(--accent);opacity:.35"></i>Still due</span></div>
-      </section>
-      <section class="panel">
-        <div class="phead"><h2>Income vs spending</h2><div class="legend"><span><i style="background:var(--income)"></i>In</span><span><i style="background:var(--porcelain)"></i>Out</span></div></div>
-        <div class="chart">${barChart(months.map(ymShort), [{ name: "In", values: flows.map((f) => f.income), color: "var(--income)" }, { name: "Out", values: flows.map((f) => f.spent), color: "var(--porcelain)" }], { hi: 5, h: 210, label: "Income and spending for the last six months" })}</div>
-        <div class="leftover-row">${months.map((m, i) => `<span><span class="note">${esc(ymShort(m))}</span><b class="num ${leftovers[i] < 0 ? "neg" : leftovers[i] > 0 ? "pos" : ""}">${flows[i].income || flows[i].spent ? (leftovers[i] < 0 ? "−" : "+") + esc(MK.format(Math.abs(leftovers[i]))) : "—"}</b></span>`).join("")}</div>
-        <p class="note" style="margin-top:8px">${withIncome.length ? `On average you keep <b class="${avgLeft < 0 ? "neg" : "pos"}">${fmt(avgLeft)}</b> a month in months with income logged.` : "Log paydays to see what you keep each month."}</p>
-      </section>
-      <section class="panel">
-        <div class="phead"><h2>Debt</h2><span class="eyebrow">Loans + card balances</span></div>
-        <div class="debt-top"><div><span class="eyebrow">Total owed</span><div class="big-fig neg">${fmt(debt.total)}</div><span class="note">${fmt(debt.loans)} loans · ${fmt(debt.cards)} cards</span></div>
-        <div><span class="eyebrow">Debt-free</span><div class="big-fig">${ends.length ? esc(ymName(ymOf(ends[ends.length - 1]), { month: "short", year: "numeric" })) : "—"}</div><span class="note">${ends.length ? "loans only, if you add no new ones" : "No active loans"}</span></div></div>
-        <div class="chart">${lineChart(hist, { color: "var(--expense)", label: "Total debt over time", endLabel: MK.format(debt.total), h: 170 })}</div>
-        ${freed > 0 ? `<div class="callout"><span>${soon.length} loan${soon.length > 1 ? "s" : ""} finish within 3 months, freeing</span><b>${fmt(freed)} a month</b><span class="note"><a href="#loans">See loans</a></span></div>` : ""}
-      </section>
-    </div>
-    <div class="stack">
-      <section class="panel">
-        <div class="phead"><h2>Still to pay · ${esc(ymShort(S.month))}</h2><span class="num">${unpaid.length ? fmt(unpaidAmt) + (asBilled ? " +" : "") : ""}</span></div>
-        <div class="rows">${unpaid.length ? unpaid.slice(0, 5).map((i) => dueRow(v, i)).join("") : `<div class="empty"><strong>All paid for ${esc(ymName(S.month))}</strong>Nothing left on either cutoff.</div>`}</div>
-        ${unpaid.length > 5 ? `<p class="note" style="margin-top:8px"><a href="#bills">See all ${unpaid.length} in Bills</a></p>` : ""}
-      </section>
-      <section class="panel">
-        <div class="phead"><h2>Budget pace</h2><span class="eyebrow">${isCur ? "Day " + Number(todayStr().slice(8)) + " of " + ld : esc(ymShort(S.month))}</span></div>
-        ${bTotal ? `<div class="pace"><div class="pace-track"><i style="width:${Math.min(100, (bSpent / bTotal) * 100).toFixed(1)}%;background:${bSpent > bTotal ? "var(--expense)" : paceDiff > 0 ? "var(--warn)" : "var(--income)"}"></i><b style="left:${Math.min(100, dayFrac * 100).toFixed(1)}%" title="Even pace"></b></div>
-          <div class="pace-nums"><span><span class="num">${fmt(bSpent)}</span> <span class="note">of ${fmt(bTotal)} budgeted</span></span><span class="pill ${bSpent > bTotal ? "over" : paceDiff > 0 ? "soon" : "paid"}">${bSpent > bTotal ? "Over budget" : paceDiff > 0 ? fmt(paceDiff) + " ahead of pace" : fmt(-paceDiff) + " under pace"}</span></div>
-          <p class="note">The tick marks an even pace through the month.</p></div>` : `<div class="empty">Set monthly limits under <a href="#accounts">Accounts → Budgets &amp; categories</a> to track your pace.</div>`}
-      </section>
-      <section class="panel">
-        <div class="phead"><h2>Where it went</h2><span class="eyebrow">${esc(ymName(S.month))}</span></div>
-        ${cats.length ? cats.slice(0, 6).map(([c, a], i) => { const b = v.settings.budgets[c]; const pct = b ? a / b : a / catMax; return `<div class="catrow"><div class="top"><span>${esc(c)}</span><span>${fmt(a)}${b ? " / " + esc(M0.format(b)) : ""}</span></div><div class="prog ${b ? (pct > 1 ? "over" : pct > 0.85 ? "warn" : "good") : ""}"><i style="width:${Math.min(100, pct * 100).toFixed(1)}%;${b ? "" : "background:" + catColor(i)}"></i></div></div>`; }).join("") : `<div class="empty"><strong>No spending logged</strong>Add expenses in the Daily tab.</div>`}
-      </section>
-      <section class="panel">
-        <div class="phead"><h2>Balances</h2><span class="eyebrow">Today</span></div>
-        <div class="bal">
-          ${bRow("Spending money", spendMoney, spendMoney < 0 ? "neg" : "", "banks, e-wallets, cash")}
-          ${bRow("Savings &amp; investments", savings, "pos")}
-          ${bRow("Card balances", -cards, "neg")}
-          ${bRow("Loans", -loansBal, "neg")}
-          <div class="bal-row total"><span>Net worth</span><span class="num ${netWorth < 0 ? "neg" : ""}">${fmt(netWorth)}</span></div>
-        </div>
-        ${(() => { const wr = r2(sum((v.reimb || []).filter((r) => !r.claimed), (r) => +r.amount || 0)); return owed || wr ? `<p class="note" style="margin-top:8px">Not counted in net worth: ${owed ? fmt(owed) + ` owed by people (<a href="#owed">Owed to me</a>)` : ""}${owed && wr ? " · " : ""}${wr ? fmt(wr) + ` waiting from ${esc(v.settings.payer || "DAP")} (<a href="#reimb">Reimbursements</a>)` : ""}.</p>` : ""; })()}
-      </section>
-    </div>
-  </div>`;
-}
-
 function tDaily(v) {
   const today = todayStr();
   const inM = v.txns.filter((t) => t.type === "expense" && (!t.link || t.link.kind === "fee") && t.date.startsWith(S.month)).sort((a, b) => b.date.localeCompare(a.date) || (b.createdAt || 0) - (a.createdAt || 0));
@@ -1330,7 +1222,7 @@ function tHouse(v) {
   const byM = {}; v.utilities.forEach((u) => (byM[u.id] = u));
   const get = (m, k) => Number((byM[m] || {})[k]) || 0;
   const div = (a, b) => (a > 0 && b > 0 ? r2(a / b) : 0);
-  const elec = months.map((m) => get(m, "elec")), kwh = months.map((m) => get(m, "kwh")), eRate = months.map((m, i) => div(elec[i], kwh[i]));
+  const elec = months.map((m) => get(m, "elec")), kwh = months.map((m) => get(m, "kwh")), eRate = months.map((m) => (byM[m] ? kwhRate(byM[m]) : 0));
   const water = months.map((m) => get(m, "water")), cum = months.map((m) => get(m, "cum")), wRate = months.map((m, i) => div(water[i], cum[i]));
   const avg = (arr) => { const xs = arr.filter((x) => x > 0); return xs.length ? sum(xs) / xs.length : 0; };
   const latestE = rows.find((u) => +u.elec > 0);
@@ -1368,7 +1260,7 @@ function tHouse(v) {
   <section class="panel">
     <div class="phead"><h2>Utility bills</h2><div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn small primary" data-act="newutil">Log a month</button><button type="button" class="btn small" data-act="mates">Housemates &amp; splits</button></div></div>
     <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Month</th><th>Electricity</th><th>kWh</th><th>₱/kWh</th><th>Water</th><th>cu.m.</th><th>₱/cu.m.</th><th>Internet</th><th>Rent</th><th>Total</th><th>You</th>${mates.map((m) => `<th>${esc(m.name)}</th>`).join("")}<th>Receipt</th></tr></thead><tbody>
-    ${rows.map((u) => `<tr class="clickable" data-act="editutil" data-id="${esc(u.id)}"><td>${esc(ymName(u.id, { month: "short", year: "numeric" }))}</td><td>${fmt(u.elec)}</td><td>${u.kwh || "—"}</td><td>${div(+u.elec, +u.kwh) ? div(+u.elec, +u.kwh).toFixed(2) : "—"}</td><td>${fmt(u.water)}</td><td>${u.cum || "—"}</td><td>${div(+u.water, +u.cum) ? div(+u.water, +u.cum).toFixed(2) : "—"}</td><td>${fmt(u.internet)}</td><td>${+u.rent ? fmt(u.rent) : "—"}</td><td>${fmt(tot(u))}</td><td>${fmt(mine(u))}</td>${mates.map((m) => `<td class="${(u.paid || {})[m.name] ? "pos" : "neg"}">${fmt(share(u, m))} ${(u.paid || {})[m.name] ? "✓" : ""}</td>`).join("")}<td>${(u.receipts || []).length ? rcLinks(u.receipts, "View") : "—"}</td></tr>`).join("") || `<tr><td colspan="${12 + mates.length}" style="text-align:center;color:var(--muted);font-family:var(--f-body)">No utility bills logged yet. Tap “Log a month” to add one.</td></tr>`}
+    ${rows.map((u) => `<tr class="clickable" data-act="editutil" data-id="${esc(u.id)}"><td>${esc(ymName(u.id, { month: "short", year: "numeric" }))}</td><td>${fmt(u.elec)}</td><td>${u.kwh || "—"}</td><td>${kwhRate(u) ? esc(rateTxt(u).slice(1)) : "—"}</td><td>${fmt(u.water)}</td><td>${u.cum || "—"}</td><td>${div(+u.water, +u.cum) ? div(+u.water, +u.cum).toFixed(2) : "—"}</td><td>${fmt(u.internet)}</td><td>${+u.rent ? fmt(u.rent) : "—"}</td><td>${fmt(tot(u))}</td><td>${fmt(mine(u))}</td>${mates.map((m) => `<td class="${(u.paid || {})[m.name] ? "pos" : "neg"}">${fmt(share(u, m))} ${(u.paid || {})[m.name] ? "✓" : ""}</td>`).join("")}<td>${(u.receipts || []).length ? rcLinks(u.receipts, "View") : "—"}</td></tr>`).join("") || `<tr><td colspan="${12 + mates.length}" style="text-align:center;color:var(--muted);font-family:var(--f-body)">No utility bills logged yet. Tap “Log a month” to add one.</td></tr>`}
     </tbody></table></div>
     <p class="note" style="margin-top:8px">Tap a month to edit it or mark a housemate's share as paid. Use the month arrows at the top to switch years.</p>
   </section>`;
@@ -1610,6 +1502,7 @@ function sheetUtil(v, u) {
   openSheet(isNew ? "Log utility bills" : "Utilities · " + ymName(u.id), `
     ${fld("uMonth", "Bill month", inp("uMonth", u.id, 'type="month"' + (isNew ? "" : " disabled")))}
     <div class="grid3">${fld("uElec", "Electricity bill", money("uElec", u.elec))}${fld("uKwh", "kWh used", inp("uKwh", u.kwh, 'inputmode="numeric"'))}${fld("uEFee", "Payment fee", money("uEFee", u.elecFee))}</div>
+    <div class="grid2">${fld("uERate", "Rate per kWh (from your bill)", inp("uERate", u.elecRate, 'inputmode="decimal" placeholder="e.g. 13.4712"'))}<p class="note" id="uERateHint" style="align-self:end;margin:0 0 10px"></p></div>
     <div class="grid3">${fld("uWater", "Water bill", money("uWater", u.water))}${fld("uCum", "cu.m. used", inp("uCum", u.cum, 'inputmode="numeric"'))}${fld("uWFee", "Payment fee", money("uWFee", u.waterFee))}</div>
     <div class="grid2">${fld("uEPer", "Electricity billing period (optional)", inp("uEPer", u.elecPeriod || "", 'maxlength="40" placeholder="e.g. Aug 16 – Sep 15"'))}${fld("uWPer", "Water billing period (optional)", inp("uWPer", u.waterPeriod || "", 'maxlength="40" placeholder="e.g. Aug 21 – Sep 19"'))}</div>
     <div class="grid2">${fld("uRent", "Rent", money("uRent", u.rent))}<span></span></div>
@@ -1620,12 +1513,14 @@ function sheetUtil(v, u) {
       const id = val("uMonth"); if (!/^\d{4}-\d{2}$/.test(id)) return shErr("Pick the bill month.");
       if (RCS.busy) return shErr("Wait for the receipt to finish uploading.");
       const paid = Object.assign({}, u.paid || {});
-      const nu = { id, rent: num(val("uRent")) || 0, elec: num(val("uElec")) || 0, kwh: num(val("uKwh")) || 0, elecFee: num(val("uEFee")) || 0, water: num(val("uWater")) || 0, cum: num(val("uCum")) || 0, waterFee: num(val("uWFee")) || 0, internet: num(val("uNet")) || 0, paid, receipts: rcClean(RCS.list), elecPeriod: val("uEPer").trim(), waterPeriod: val("uWPer").trim(), payBy: val("uPayBy") };
+      const nu = { id, rent: num(val("uRent")) || 0, elec: num(val("uElec")) || 0, elecRate: (() => { const r = Number(String(val("uERate")).replace(/[₱,\s]/g, "")); return isFinite(r) && r > 0 ? Math.round(r * 10000) / 10000 : ""; })(), kwh: num(val("uKwh")) || 0, elecFee: num(val("uEFee")) || 0, water: num(val("uWater")) || 0, cum: num(val("uCum")) || 0, waterFee: num(val("uWFee")) || 0, internet: num(val("uNet")) || 0, paid, receipts: rcClean(RCS.list), elecPeriod: val("uEPer").trim(), waterPeriod: val("uWPer").trim(), payBy: val("uPayBy") };
       const gone = v.txns.filter((t) => t.link && t.link.kind === "mateshare" && t.link.id.startsWith(id + ":") && !paid[t.link.id.slice(id.length + 1)]);
       if (await act(async () => { await store.put("utilities", nu); for (const t of gone) await store.del("txns", t.id); }, "Utilities saved for " + ymName(id))) closeSheet();
     }, isNew ? "" : delBtn);
   sheetDelete = isNew ? null : async () => { if (await act(() => store.del("utilities", u.id), "Month removed")) closeSheet(); };
   wireReceipts(u.receipts, () => (val("uMonth") || S.month) + " utilities");
+  const rateHint = () => { const e = num(val("uElec")), k = num(val("uKwh")); const h = $("uERateHint"); if (!h) return; h.textContent = e > 0 && k > 0 ? `Bill ÷ kWh is ${fmt(r2(e / k))}, which includes other charges. ${val("uERate").trim() ? "Your rate is used instead." : "Leave blank to use that."}` : "Leave blank to use bill ÷ kWh."; };
+  ["uElec", "uKwh", "uERate"].forEach((id) => $(id) && $(id).addEventListener("input", rateHint)); rateHint();
 }
 function sheetMates(v) {
   const mates = clone(v.settings.house && v.settings.house.mates || []);
@@ -2059,7 +1954,7 @@ function mateBill(u, m) {
   const rentT = r2(+u.rent || 0);
   if (rentT > 0 && (m.rent || 0) > 0) lines.push({ k: "Rent", bill: rentT, fee: 0, total: rentT, pct: m.rent, share: r2(rentT * sharePct(m.rent) / 100), period: "", use: "" });
   const elecT = r2((+u.elec || 0) + (+u.elecFee || 0)), waterT = r2((+u.water || 0) + (+u.waterFee || 0)), net = r2(+u.internet || 0);
-  if (elecT > 0 && (m.elec || 0) > 0) lines.push({ k: "Electricity", bill: +u.elec || 0, fee: +u.elecFee || 0, total: elecT, pct: m.elec, share: r2(elecT * sharePct(m.elec) / 100), period: u.elecPeriod || "", use: +u.kwh > 0 ? `${u.kwh} kWh × ${fmt(r2((+u.elec || 0) / (+u.kwh)))}/kWh` : "" });
+  if (elecT > 0 && (m.elec || 0) > 0) lines.push({ k: "Electricity", bill: +u.elec || 0, fee: +u.elecFee || 0, total: elecT, pct: m.elec, share: r2(elecT * sharePct(m.elec) / 100), period: u.elecPeriod || "", use: +u.kwh > 0 ? `${u.kwh} kWh × ${rateTxt(u)}/kWh` : "" });
   if (waterT > 0 && (m.water || 0) > 0) lines.push({ k: "Water", bill: +u.water || 0, fee: +u.waterFee || 0, total: waterT, pct: m.water, share: r2(waterT * sharePct(m.water) / 100), period: u.waterPeriod || "", use: +u.cum > 0 ? `${u.cum} cu.m. × ${fmt(r2((+u.water || 0) / (+u.cum)))}/cu.m.` : "" });
   if (net > 0 && (m.internet || 0) > 0) lines.push({ k: "Internet", bill: net, fee: 0, total: net, pct: m.internet, share: r2(net * sharePct(m.internet) / 100), period: "", use: "" });
   return { lines, total: r2(sum(lines, (l) => l.share)) };
@@ -2505,7 +2400,7 @@ function squarify(items, x, y, w, h) {
   return out;
 }
 function treemap(items, opt) {
-  const narrow = window.innerWidth < 560; const W = narrow ? 330 : 420, H = narrow ? 240 : 250, G = 2;
+  const narrow = window.innerWidth < 560; const W = narrow ? 330 : opt.w || 420, H = narrow ? 240 : opt.h || 250, G = 2;
   const total = sum(items, (i) => i.v); if (!(total > 0)) return `<div class="empty">${esc(opt.empty || "No spending logged yet.")}</div>`;
   const cells = squarify(items, 0, 0, W, H); const n = cells.length;
   const F = "Google Sans Flex, Helvetica Neue, Helvetica, Arial, sans-serif";
@@ -2516,7 +2411,7 @@ function treemap(items, opt) {
     const x = c.x + G / 2, y = c.y + G / 2, w = Math.max(0, c.w - G), h = Math.max(0, c.h - G);
     const pct = Math.round((c.v / total) * 100);
     const sel = opt.sel && opt.sel === c.k;
-    s += `<g class="tm-cell" data-act="${c.other ? "" : "daycat"}" data-cat="${esc(c.other ? "" : c.k)}" style="cursor:${c.other ? "default" : "pointer"}"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="4" fill="var(--accent)" fill-opacity="${op}" ${sel ? 'stroke="var(--ink)" stroke-width="2.5"' : ""}><title>${esc(c.label)} · ${esc(fmt(c.v))} · ${pct}%</title></rect>`;
+    s += `<g class="tm-cell" data-act="${c.other || opt.still ? "" : "daycat"}" data-cat="${esc(c.other ? "" : c.k)}" style="cursor:${c.other || opt.still ? "default" : "pointer"}"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="4" fill="var(--accent)" fill-opacity="${op}" ${sel ? 'stroke="var(--ink)" stroke-width="2.5"' : ""}><title>${esc(c.label)} · ${esc(fmt(c.v))} · ${pct}%</title></rect>`;
     const ink = dark ? "var(--accent-ink)" : "var(--ink)";
     const fs = w > 150 && h > 70 ? 15 : 12.5;
     if (w > 54 && h > 36) {
@@ -3165,9 +3060,18 @@ function tSalary(v) {
         <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Payday</th><th>Gross</th><th>GSIS, HDMF, PHIC</th><th>Tax</th><th>Other ded.</th><th>Net</th></tr></thead><tbody>${salaryRows(v, sal, months)}</tbody></table></div>
       </section>
       <section class="panel">
-        <div class="phead"><h2>Net pay by month</h2></div>
-        <div class="chart">${barChart(months.map(ymShort), [{ name: "Net pay", values: byM.map((a) => r2(sum(a, (t) => +t.amount))), color: "var(--income)" }], { hi: 5, h: 200, label: "Net pay by month" })}</div>
-        ${c ? `<p class="note">Your payslip says ${fmt(c.month)} a month. ${(() => { const m = byM[5]; const got = r2(sum(m, (t) => +t.amount)); return m.length === 2 ? (Math.abs(got - c.month) < 1 ? "This month matched it." : `This month you got ${fmt(got)}, ${got < c.month ? fmt(r2(c.month - got)) + " less" : fmt(r2(got - c.month)) + " more"}.`) : ""; })()}</p>` : ""}
+        <div class="phead"><h2>Income by month</h2><div class="legend" style="margin:0"><span><i style="background:var(--sal)"></i>Salary</span><span><i style="background:var(--oth)"></i>Other income</span></div></div>
+        ${(() => {
+          const sv = byM.map((a) => r2(sum(a, (t) => +t.amount)));
+          const oT = months.map((ym) => v.txns.filter((t) => t.type === "income" && t.category !== "Salary" && t.date.startsWith(ym)));
+          const ov = oT.map((a) => r2(sum(a, (t) => +t.amount)));
+          const why = oT.map((a) => { const c = {}; a.forEach((t) => (c[t.category] = r2((c[t.category] || 0) + (+t.amount)))); return Object.keys(c).map((x) => x + " " + fmt(c[x])).join(", "); });
+          const tNow = r2(sv[5] + ov[5]);
+          return `<p class="vizsum"><b class="num">${fmt(tNow)}</b> in ${esc(ymName(S.month, { month: "long" }))}${tNow ? ` · salary ${fmt(sv[5])}${ov[5] ? ` + other ${fmt(ov[5])}` : ""}` : ""}</p>
+          <div class="chart">${incomeChart(months.map(ymShort), sv, ov, { hi: 5, why, label: "Salary and other income by month, last 6 months" })}</div>
+          ${ov[5] ? `<p class="note">Other income in ${esc(ymShort(S.month))}: ${esc(why[5])}.</p>` : ""}`;
+        })()}
+        ${c ? `<p class="note">Your payslip says ${fmt(c.month)} a month. ${(() => { const m = byM[5]; const got = r2(sum(m, (t) => +t.amount)); return m.length === 2 ? (Math.abs(got - c.month) < 1 ? "This month's salary matched it." : `This month's salary was ${fmt(got)}, ${got < c.month ? fmt(r2(c.month - got)) + " less" : fmt(r2(got - c.month)) + " more"}.`) : ""; })()}</p>` : ""}
       </section>
     </div>
     <div class="stack">
@@ -3304,6 +3208,169 @@ function sheetSalary(v, t) {
   $("sheetForm").addEventListener("input", (e) => { if (e.target.id === "sMoveAmt") moveEdited = true; calc(); });
   $("sheetForm").addEventListener("change", calc); calc();
   sheetDelete = t ? async () => { if (await act(async () => { if (mv) { if (mvFee) await store.del("txns", mvFee.id); await store.del("txns", mv.id); } await store.del("txns", t.id); }, "Payday removed")) closeSheet(); } : null;
+}
+
+/* ============ income by month: salary and other income side by side, labeled ============ */
+function incomeChart(labels, sal, oth, opt) {
+  opt = opt || {}; const narrow = window.innerWidth < 560;
+  const W = opt.w || (narrow ? 380 : 640), H = narrow && !opt.w ? 250 : 260, L = 50, R = 8, T = 34, B = 28;
+  const tot = labels.map((_, i) => r2((sal[i] || 0) + (oth[i] || 0)));
+  const rawMax = Math.max(0, ...sal, ...oth);
+  if (!(rawMax > 0)) return `<div class="empty">No income logged in these months yet.</div>`;
+  const { step, top } = niceScale(rawMax, 4);
+  const iw = W - L - R, ih = H - T - B, y = (v) => T + ih - (v / top) * ih;
+  const gw = iw / labels.length, gap = 3, bw = Math.min(40, (gw * 0.8 - gap) / 2);
+  const F = "Google Sans Flex, Helvetica Neue, Helvetica, Arial, sans-serif";
+  const k = (v) => (v >= 1000 ? (Math.round(v / 100) / 10).toLocaleString("en-PH") + "K" : String(Math.round(v)));
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(opt.label || "Income by month")}">`;
+  for (let v = 0; v <= top + 1e-6; v += step) s += `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)" ${v ? 'stroke-dasharray="3 4"' : ""}/><text x="${L - 8}" y="${y(v) + 4}" text-anchor="end" font-size="11" fill="var(--muted)" font-family="${F}">${esc(MK.format(v).replace("₱", ""))}</text>`;
+  const SER = [["Salary", sal, "var(--sal)", "var(--sal-ink)"], ["Other income", oth, "var(--oth)", "var(--oth-ink)"]];
+  labels.forEach((lb, i) => {
+    const cx = L + gw * i + gw / 2; const hl = opt.hi === i;
+    let topY = y(0);
+    const both = (sal[i] || 0) > 0 && (oth[i] || 0) > 0; /* with one bar the total is its label */
+    SER.forEach(([name, vals, color, inkIn], j) => {
+      const v = vals[i] || 0; if (!(v > 0)) return;
+      const x = cx - (2 * bw + gap) / 2 + j * (bw + gap), yy = y(v), h = Math.max(1, y(0) - yy);
+      s += `<rect x="${x}" y="${yy}" width="${bw}" height="${h}" rx="4" fill="${color}"><title>${esc(lb)} · ${esc(name)} ${esc(fmt(v))}${name === "Other income" && opt.why && opt.why[i] ? " (" + esc(opt.why[i]) + ")" : ""}</title></rect>`;
+      const t = k(v); const tw = t.length * 6.1;
+      if (!both) topY = Math.min(topY, yy - 2);
+      else if (tw <= bw + 6) { s += `<text x="${x + bw / 2}" y="${yy - 5}" text-anchor="middle" font-size="10.5" fill="var(--ink)" font-family="${F}">${esc(t)}</text>`; topY = Math.min(topY, yy - 16); }
+      else if (h >= tw + 8) s += `<text transform="translate(${x + bw / 2 + 3.6},${yy + 6}) rotate(-90)" text-anchor="end" font-size="10.5" font-weight="600" fill="${inkIn}" font-family="${F}">${esc(t)}</text>`;
+      else { s += `<text transform="translate(${x + bw / 2 + 3.6},${yy - 4}) rotate(-90)" font-size="10.5" fill="var(--ink)" font-family="${F}">${esc(t)}</text>`; topY = Math.min(topY, yy - tw - 8); }
+      topY = Math.min(topY, yy - 4);
+    });
+    if (tot[i] > 0) {
+      let ty = Math.max(12, topY - 6);
+      if (both) {
+        /* a bracket over the pair shows what the total covers */
+        const x1 = cx - (2 * bw + gap) / 2, x2 = x1 + 2 * bw + gap, yb = Math.max(20, topY - 4);
+        s += `<path d="M${x1 + 0.5},${yb + 6} V${yb} H${x2 - 0.5} V${yb + 6}" fill="none" stroke="var(--muted)" stroke-width="1.2" stroke-linejoin="round"/>`;
+        ty = yb - 5;
+      }
+      s += `<text x="${cx}" y="${Math.max(12, ty)}" text-anchor="middle" font-size="${narrow ? 11 : 12}" font-weight="700" fill="var(--ink)" font-family="${F}">${esc(k(tot[i]))}</text>`;
+    }
+    s += `<text x="${cx}" y="${H - 8}" text-anchor="middle" font-size="11.5" fill="${hl ? "var(--ink)" : "var(--muted)"}" font-weight="${hl ? 600 : 400}" font-family="${F}">${esc(lb)}</text>`;
+  });
+  return s + "</svg>";
+}
+
+/* ============ overview: all time, not one month ============ */
+function allMonths(v) {
+  const cur = ymOf(todayStr());
+  const first = v.txns.reduce((m, t) => (t.date && t.date.slice(0, 7) < m ? t.date.slice(0, 7) : m), cur);
+  const out = []; let ym = first; for (let i = 0; i < 60 && ym <= cur; i++) { out.push(ym); ym = shiftYM(ym, 1); }
+  return out.slice(-36);
+}
+/* charts with many months get a fixed width per month and scroll sideways, newest month in view */
+function wideChart(n, svg) { return n > 12 ? `<div class="hscroll"><div style="min-width:${n * 58}px">${svg}</div></div>` : svg; }
+function goalMini(v, g) {
+  if (g.type === "save") {
+    const p = savePlan(v, g);
+    return `<div class="gmini"><div class="phead" style="margin-bottom:6px"><div><span class="eyebrow">Savings goal</span><h3>${esc(g.name || "Savings")} · ${fmt(g.amount)} by ${esc(dShort(g.target))}, ${g.target.slice(0, 4)}</h3></div><span class="pill ${p.reachable ? "paid" : "soon"}">${p.reachable ? "Reachable" : "Tight"}</span></div>
+      <div class="gbar"><span style="width:${Math.round(p.progress * 100)}%"></span></div>
+      <div class="gfacts"><span><b class="num">${fmt(p.have)}</b> saved · ${Math.round(p.progress * 100)}%</span><span><b class="num">${fmt(p.perMonth)}</b> a month to go</span></div></div>`;
+  }
+  const p = goalPlan(v, g); const done = p.debt.total <= 0;
+  const st = done ? ["paid", "Debt-free"] : p.reachable ? (p.ahead >= 0 ? ["paid", "On track"] : ["soon", "Behind the line"]) : ["over", "Not reachable at your pace"];
+  return `<div class="gmini gsplit"><div><div class="phead" style="margin-bottom:6px"><div><span class="eyebrow">Goal</span><h3>Debt-free by ${esc(dShort(g.target))}, ${g.target.slice(0, 4)}</h3></div><span class="pill ${st[0]}">${st[1]}</span></div>
+    <div class="gbar"><span style="width:${Math.round(p.progress * 100)}%"></span></div>
+    <div class="gfacts"><span><b class="num">${fmt(Math.max(0, r2(g.startDebt - p.debt.total)))}</b> paid off · ${Math.round(p.progress * 100)}%</span><span><b class="num">${fmt(p.debt.total)}</b> to go</span>${done ? "" : `<span><b class="num">${fmt(p.extraNeeded)}</b> extra a month needed</span><span>At your pace: <b>${p.atPace.doneYm ? esc(ymName(p.atPace.doneYm)) : "years"}</b></span>`}</div></div>
+    ${done ? "" : `<div><div class="legend" style="margin-top:0"><span><i style="background:var(--accent)"></i>Your debt</span><span><i style="background:var(--pear)"></i>Path to your goal</span></div><div class="chart">${goalChart(v, g, p)}</div></div>`}</div>`;
+}
+function tOverview(v) {
+  const bal = balances(v), debt = debtNow(v, bal);
+  const owed = r2(sum(v.people, (p) => Math.max(0, personBal(p))));
+  const loansBal = r2(sum(v.loans, (l) => loanState(v, l).balance));
+  const accts = v.settings.accounts;
+  const grp = (types) => r2(sum(accts.filter((a) => types.includes(a.type)), (a) => bal[a.id] || 0));
+  const spendMoney = grp(["bank", "ewallet", "cash"]), savings = grp(["savings"]), cards = r2(-grp(["credit", "bnpl"]));
+  const netWorth = r2(spendMoney + savings - cards - loansBal);
+  const months = allMonths(v); const flows = months.map((m) => monthFlow(v, m)); const nM = months.length;
+  const inc = r2(sum(flows, (f) => f.income)), out = r2(sum(flows, (f) => f.spent)), kept = r2(inc - out);
+  const sal = months.map((ym) => r2(sum(v.txns.filter((t) => t.type === "income" && t.category === "Salary" && t.date.startsWith(ym)), (t) => +t.amount)));
+  const othT = months.map((ym) => v.txns.filter((t) => t.type === "income" && t.category !== "Salary" && t.date.startsWith(ym)));
+  const oth = othT.map((a) => r2(sum(a, (t) => +t.amount)));
+  const why = othT.map((a) => { const c = {}; a.forEach((t) => (c[t.category] = r2((c[t.category] || 0) + (+t.amount)))); return Object.keys(c).map((x) => x + " " + fmt(c[x])).join(", "); });
+  const lbl = months.map((m, i) => (nM > 12 && (i === 0 || m.endsWith("-01")) ? ymShort(m) + " '" + m.slice(2, 4) : ymShort(m)));
+  const salT = r2(sum(sal, (x) => x)), othTot = r2(sum(oth, (x) => x));
+  const items = dueItems(v, ymOf(todayStr()));
+  const unpaid = items.filter((i) => !i.paid).sort((a, b) => a.due.localeCompare(b.due));
+  const unpaidAmt = r2(sum(unpaid, (i) => Number(i.amount) || 0)); const asBilled = unpaid.some((i) => !i.amount);
+  const byCat = {}; flows.forEach((f) => Object.entries(f.byCat).forEach(([c, a]) => (byCat[c] = r2((byCat[c] || 0) + a))));
+  const cats = Object.entries(byCat).sort((a, b) => b[1] - a[1]); const catTot = r2(sum(cats, (x) => x[1])); const catMax = cats.length ? cats[0][1] : 1;
+  const hist = (v.settings.history || []).map(([d, val]) => ({ l: dShort(d), v: val, d })).sort((a, b) => a.d.localeCompare(b.d));
+  hist.push({ l: "Today", v: debt.total, d: todayStr() });
+  const active = v.loans.filter((l) => loanState(v, l).balance > 0);
+  const ends = active.map((l) => loanEnd(v, l)).filter(Boolean).sort();
+  const leftovers = flows.map((f) => r2(f.income - f.spent));
+  const withIncome = flows.filter((f) => f.income > 0);
+  const avgLeft = withIncome.length ? r2(sum(withIncome, (f) => f.income - f.spent) / withIncome.length) : 0;
+  const best = withIncome.length ? months[leftovers.indexOf(Math.max(...leftovers))] : null;
+  const since = months.length ? ymName(months[0]) : "";
+  const bRow = (label, val, cls, note) => `<div class="bal-row"><span>${label}${note ? `<span class="note"> · ${note}</span>` : ""}</span><span class="num ${cls || ""}">${fmt(val)}</span></div>`;
+  const gs = v.settings.goals || [];
+  const sb = gs.length ? spendBudget(v) : null; const wkDays = weekDays(0); const wkEl = daysBetween(wkDays[0], todayStr()) + 1;
+  const wkSpent = r2(sum(v.txns.filter((t) => isDaily(t) && t.date >= wkDays[0] && t.date <= todayStr()), (t) => +t.amount));
+  const wkV = sb && sb.perDay > 0 && wkSpent > 0 ? verdictOf(wkSpent / (sb.perDay * wkEl)) : null;
+
+  return `
+  <section class="panel kpis" aria-label="All-time snapshot">
+    <div class="kpi hero"><span class="eyebrow">Net worth today</span><span class="v ${netWorth < 0 ? "neg" : ""}">${fmt(netWorth)}</span><span class="s">Accounts and savings minus all debt</span></div>
+    <div class="kpi"><span class="eyebrow">Total income</span><span class="v pos">${fmt(inc)}</span><span class="s">${since ? "Since " + esc(since) + " · " + plural(nM, "month") : "Nothing logged yet"}</span></div>
+    <div class="kpi"><span class="eyebrow">Total spent</span><span class="v">${fmt(out)}</span><span class="s">Daily, bills and loan payments</span></div>
+    <div class="kpi"><span class="eyebrow">Kept</span><span class="v ${kept < 0 ? "neg" : "pos"}">${fmt(kept)}</span><span class="s">${inc > 0 ? Math.round((kept / inc) * 100) + "% of everything that came in" : "Log income to see this"}</span></div>
+  </section>
+  <section class="panel">
+    <div class="phead"><h2>Income by month</h2><div class="legend" style="margin:0"><span><i style="background:var(--sal)"></i>Salary</span><span><i style="background:var(--oth)"></i>Other income</span></div></div>
+    <p class="vizsum">All time: salary <b class="num">${fmt(salT)}</b> + other income <b class="num">${fmt(othTot)}</b>${nM ? ` · about <b class="num">${fmt(r2(inc / Math.max(1, withIncome.length)))}</b> a month` : ""}</p>
+    <div class="chart">${wideChart(nM, incomeChart(lbl, sal, oth, { hi: nM - 1, why, w: nM > 12 ? nM * 58 : window.innerWidth < 560 ? 0 : 1000, label: "Salary and other income by month, all time" }))}</div>
+    ${oth[nM - 1] ? `<p class="note">Other income this month: ${esc(why[nM - 1])}.</p>` : ""}
+  </section>
+  <div class="pair">
+      <section class="panel">
+        <div class="phead"><h2>Income vs spending</h2><div class="legend"><span><i style="background:var(--income)"></i>In</span><span><i style="background:var(--porcelain)"></i>Out</span></div></div>
+        <div class="chart">${wideChart(nM, barChart(lbl, [{ name: "In", values: flows.map((f) => f.income), color: "var(--income)" }, { name: "Out", values: flows.map((f) => f.spent), color: "var(--porcelain)" }], { hi: nM - 1, h: 210, w: nM > 12 ? nM * 58 : 0, label: "Income and spending by month, all time" }))}</div>
+        <div class="${nM > 12 ? "hscroll" : ""}"><div class="leftover-row" style="${nM > 6 ? `grid-template-columns:repeat(${nM},minmax(52px,1fr));` : ""}${nM > 12 ? `min-width:${nM * 58}px` : ""}">${months.map((m, i) => `<span><span class="note">${esc(lbl[i])}</span><b class="num ${leftovers[i] < 0 ? "neg" : leftovers[i] > 0 ? "pos" : ""}">${flows[i].income || flows[i].spent ? (leftovers[i] < 0 ? "−" : "+") + esc(MK.format(Math.abs(leftovers[i])).replace("₱", "")) : "—"}</b></span>`).join("")}</div></div>
+        <p class="note" style="margin-top:8px">${withIncome.length ? `On average you keep <b class="${avgLeft < 0 ? "neg" : "pos"}">${fmt(avgLeft)}</b> a month.${best ? ` Your best month was ${esc(ymName(best))} (${fmt(Math.max(...leftovers))} kept).` : ""}` : "Log paydays to see what you keep each month."}</p>
+      </section>
+      <section class="panel">
+        <div class="phead"><h2>Debt</h2><span class="eyebrow">Loans + card balances</span></div>
+        <div class="debt-top"><div><span class="eyebrow">Total owed</span><div class="big-fig neg">${fmt(debt.total)}</div><span class="note">${fmt(debt.loans)} loans · ${fmt(debt.cards)} cards</span></div>
+        <div><span class="eyebrow">Loans end</span><div class="big-fig">${ends.length ? esc(ymName(ymOf(ends[ends.length - 1]), { month: "short", year: "numeric" })) : "—"}</div><span class="note">${ends.length ? "if you add no new ones" : "No active loans"}</span></div></div>
+        <div class="chart">${lineChart(hist, { color: "var(--expense)", label: "Total debt over time", endLabel: MK.format(debt.total), h: 230 })}</div>
+      </section>
+  </div>
+  <section class="panel">
+        <div class="phead"><h2>Where it went</h2><span class="eyebrow">All time</span></div>
+        ${(() => {
+          if (!cats.length) return `<div class="empty">Nothing spent yet.</div>`;
+          /* boxes under 4% can't hold a label, so they fold into Other */
+          let items = cats.map(([k, a]) => ({ k, label: k, v: a }));
+          const keep = items.filter((c, i) => i < (window.innerWidth < 560 ? 6 : 10) && c.v / (catTot || 1) >= (window.innerWidth < 560 ? 0.06 : 0.04)), rest = items.filter((c) => !keep.includes(c));
+          if (rest.length > 1) items = keep.concat([{ k: "__other", label: "Other (" + rest.length + ")", v: r2(sum(rest, (r) => r.v)), other: true }]);
+          const top = cats[0];
+          return `<p class="vizsum"><b>${esc(top[0])}</b> is your biggest expense: ${fmt(top[1])}, ${Math.round((top[1] / catTot) * 100)}% of ${fmt(catTot)} spent since ${esc(since)}.</p>
+          <div class="chart">${treemap(items, { w: 1000, h: 340, still: true, label: "All-time spending by category" })}</div>
+          ${rest.length > 1 ? `<p class="note">Other: ${esc(rest.map((r) => r.label + " " + fmt(r.v)).join(", "))}.</p>` : ""}`;
+        })()}
+      </section>
+  <section class="panel goalsec">
+    <div class="phead"><h2>Goals</h2><a class="btn small ghost" href="#goals">Open Goals ›</a></div>
+    ${gs.length ? gs.map((g) => goalMini(v, g)).join("") + (wkV ? `<a class="gstrip" href="#goals" style="margin:12px 0 0"><span><span class="eyebrow">Coach · this week</span><b>${esc(fmt(wkSpent))} spent against ${esc(fmt(r2(sb.perDay * wkEl)))} so far</b></span><span class="gv ${wkV.k}">${wkV.w} ›</span></a>` : "")
+      : `<div class="empty"><strong>No goals yet</strong>Set one, like being debt-free by a date, and its progress shows here. <a href="#goals">Set a goal</a></div>`}
+  </section>
+  <section class="panel">
+        <div class="phead"><h2>Balances</h2><span class="eyebrow">Today</span></div>
+        <div class="bal">
+          ${bRow("Spending money", spendMoney, spendMoney < 0 ? "neg" : "", "banks, e-wallets, cash")}
+          ${bRow("Savings &amp; investments", savings, "pos")}
+          ${bRow("Card balances", -cards, "neg")}
+          ${bRow("Loans", -loansBal, "neg")}
+          <div class="bal-row total"><span>Net worth</span><span class="num ${netWorth < 0 ? "neg" : ""}">${fmt(netWorth)}</span></div>
+        </div>
+        ${(() => { const wr = r2(sum((v.reimb || []).filter((r) => !r.claimed), (r) => +r.amount || 0)); return owed || wr ? `<p class="note" style="margin-top:8px">Not counted in net worth: ${owed ? fmt(owed) + ` owed by people (<a href="#owed">Owed to me</a>)` : ""}${owed && wr ? " and " : ""}${wr ? fmt(wr) + ` in work expenses to claim (<a href="#reimb">Reimbursements</a>)` : ""}.</p>` : ""; })()}
+      </section>`;
 }
 
 /* keep a dated debt total so the history chart grows as you use the app */
