@@ -318,6 +318,9 @@ button.rrow { cursor: pointer; } button.rrow:hover { background: var(--surface-2
 .gsplit { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr); gap: 24px; align-items: start; } .gsplit .gfacts { flex-direction: column; gap: 6px; margin-top: 10px; }
 @media (max-width: 900px) { .gsplit { grid-template-columns: minmax(0, 1fr); gap: 8px; } .gsplit .gfacts { flex-direction: row; } }
 .gfacts { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 0.88rem; color: var(--muted); margin: 6px 0 4px; } .gfacts b { color: var(--ink); font-weight: 600; }
+table.tbl.compact { min-width: 0; width: 100%; } .tbl.compact th, .tbl.compact td { padding-left: 6px; padding-right: 6px; font-size: 0.86rem; }
+/* phones: chart, then paydays and payslip, then bonuses and other income */
+@media (max-width: 900px) { .salcols { display: flex; flex-direction: column; gap: 16px; } .salcols > .stack { display: contents; } .salcols .s-inc { order: 1; } .salcols .s-pay { order: 2; } .salcols .s-slip { order: 3; } .salcols .s-bon { order: 4; } .salcols .s-oth { order: 5; } }
 .bout { margin-top: 8px; } .bout img { width: 100%; max-width: 420px; border: 1px solid var(--line); border-radius: 10px; display: block; margin-bottom: 6px; }
 .vlist { display: flex; flex-direction: column; gap: 18px; }
 .vcard + .vcard { border-top: 1px dashed var(--line); padding-top: 16px; }
@@ -954,9 +957,12 @@ function statusOf(it) {
   if (d < 0) return "over"; if (d <= 5) return "soon"; return "up";
 }
 const STATUS_LBL = { paid: "Paid", over: "Overdue", soon: "Due soon", up: "Upcoming" };
+/* a housemate paying their share is money back on bills you paid, not income */
+const isMateShare = (t) => t.type === "income" && (t.category === "Housemate share" || (t.link && t.link.kind === "mateshare"));
+const isOtherIncome = (t) => t.type === "income" && t.category !== "Salary" && !isMateShare(t);
 function monthFlow(v, ym) {
   const inM = v.txns.filter((t) => t.date && t.date.startsWith(ym));
-  const income = r2(sum(inM.filter((t) => t.type === "income"), (t) => +t.amount));
+  const income = r2(sum(inM.filter((t) => t.type === "income" && !isMateShare(t)), (t) => +t.amount));
   const takeHome = r2(sum(inM.filter((t) => t.type === "income" && t.category === "Salary"), (t) => +t.amount));
   const exp = inM.filter((t) => t.type === "expense");
   let spent = r2(sum(exp, (t) => +t.amount));
@@ -970,8 +976,18 @@ function monthFlow(v, ym) {
     byCat[cat] = (byCat[cat] || 0) + m; workShare += m;
   });
   workShare = r2(workShare); spent = r2(spent + workShare);
+  /* housemates' payments come off the bill categories they paid for */
+  const shares = inM.filter(isMateShare); const matesBack = r2(sum(shares, (t) => +t.amount));
+  shares.forEach((t) => {
+    const [mid, ...nm] = String((t.link && t.link.id) || "").split(":"); const u = v.utilities.find((x) => x.id === mid); const m = u && ((v.settings.house && v.settings.house.mates) || []).find((x) => x.name === nm.join(":"));
+    const parts = u && m ? mateBill(u, m).lines.map((l) => [l.k === "Rent" ? "Rent" : l.k === "Internet" ? "Internet & phone" : "Utilities", l.share]) : [["Utilities", +t.amount]];
+    const tot = sum(parts, (x) => x[1]) || 1;
+    parts.forEach(([c, a]) => { const take = r2((+t.amount * a) / tot); byCat[c] = r2((byCat[c] || 0) - take); });
+  });
+  Object.keys(byCat).forEach((c) => { if (byCat[c] <= 0.004) delete byCat[c]; });
+  spent = r2(Math.max(0, spent - matesBack));
   const workPaid = r2(sum((v.reimb || []).filter((r) => String(r.date).startsWith(ym)), (r) => +r.amount || 0));
-  return { income, takeHome, spent, daily, byCat, toCards, workShare, workPaid };
+  return { income, takeHome, spent, daily, byCat, toCards, workShare, workPaid, matesBack };
 }
 function debtNow(v, bal) {
   const loans = sum(v.loans, (l) => loanState(v, l).balance);
@@ -2594,7 +2610,7 @@ function goalPlan(v, g) {
   const span = Math.max(1, daysBetween(g.startDate, g.target)), gone = Math.max(0, Math.min(span, daysBetween(g.startDate, todayStr())));
   const idealNow = r2(g.startDebt * (1 - gone / span));
   /* bonuses on your payslip that land before the goal date and haven't come in yet */
-  const slip = slipOf(v); const got = v.txns.filter((t) => t.type === "income" && t.category !== "Salary");
+  const slip = slipOf(v); const got = v.txns.filter((t) => isOtherIncome(t));
   const bon = [];
   if (slip) for (let k = 0; k < M; k++) { const ym = shiftYM(cur, k); (slip.bonuses || []).filter((b) => +b.m === Number(ym.slice(5)) && +b.a > 0).forEach((b) => { if (!got.some((t) => t.date.startsWith(ym.slice(0, 4)) && (t.note || "").toLowerCase().includes(b.n.toLowerCase()))) bon.push({ n: b.n, a: +b.a, ym }); }); }
   const bonSum = r2(sum(bon, (b) => b.a));
@@ -2998,7 +3014,7 @@ function payslipPanel(v) {
   if (!slip) return `<section class="panel"><div class="phead"><h2>Your payslip</h2></div><div class="empty"><strong>Set up your payslip once</strong>Enter your earnings and deductions per payday. Every payday then fills in by itself, and Prudence knows your exact take-home.<div style="margin-top:10px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap"><button type="button" class="btn primary small" data-act="payslip">Set up payslip</button><button type="button" class="btn small" data-act="paydays">Just set paydays (${esc(cutName("A"))} &amp; ${esc(cutName("B"))})</button></div></div></section>`;
   const c = slipCalc(slip); const d = slip.ded || {};
   const line = (n, a, cls) => `<div class="eq${cls ? " " + cls : ""}"><span>${esc(n)}</span><b class="num">${a}</b></div>`;
-  return `<section class="panel">
+  return `<section class="panel s-slip">
     <div class="phead"><div><h2>Your payslip</h2><span class="note">${esc([slip.position, slip.grade ? "SG " + slip.grade : "", slip.step ? "Step " + slip.step : ""].filter(Boolean).join(" · "))}${slip.effective ? " · since " + esc(dLabel(slip.effective)) : ""}</span></div><button type="button" class="btn small ghost" data-act="payslip">Edit</button></div>
     <p class="note" style="margin:0 0 8px">Paid on the <b>${esc(cutName("A"))}</b> and <b>${esc(cutName("B"))}</b> · per payday</p>
     <div class="plan slip">
@@ -3015,7 +3031,7 @@ function bonusesPanel(v) {
   const slip = slipOf(v); const list = (slip && slip.bonuses || []).filter((b) => b.n && +b.a > 0);
   if (!list.length) return "";
   const yr = S.month.slice(0, 4); const nowM = Number(todayStr().slice(5, 7)), nowY = todayStr().slice(0, 4);
-  const got = v.txns.filter((t) => t.type === "income" && t.category !== "Salary" && t.date.startsWith(yr));
+  const got = v.txns.filter((t) => isOtherIncome(t) && t.date.startsWith(yr));
   const rows = list.slice().sort((a, b) => (+a.m || 13) - (+b.m || 13)).map((b) => {
     const rec = got.find((t) => (t.note || "").toLowerCase().includes(b.n.toLowerCase()));
     const past = yr < nowY || (yr === nowY && +b.m && +b.m < nowM);
@@ -3023,9 +3039,15 @@ function bonusesPanel(v) {
   }).join("");
   const total = r2(sum(list, (b) => +b.a));
   const left = r2(sum(list.filter((b) => !got.some((t) => (t.note || "").toLowerCase().includes(b.n.toLowerCase())) && (yr > nowY || (yr === nowY && (!+b.m || +b.m >= nowM)))), (b) => +b.a));
-  return `<section class="panel"><div class="phead"><h2>Bonuses ${esc(yr)}</h2><span class="eyebrow">${fmt(total)} a year</span></div>
+  return `<section class="panel s-bon"><div class="phead"><h2>Bonuses ${esc(yr)}</h2><span class="eyebrow">${fmt(total)} a year</span></div>
     <div class="rows">${rows}</div>
     <p class="note" style="margin-top:8px">${left > 0 && yr === nowY ? `Still to come this year: <b>${fmt(left)}</b> before tax. ` : ""}Log the amount that actually lands in your account; bonuses above the tax-free ceiling may have tax withheld.</p></section>`;
+}
+function salaryRowsCompact(v, sal, months) {
+  return sal.filter((t) => months.includes(ymOf(t.date))).reverse().map((t) => {
+    const ded = r2(sum(DED, ([k]) => dget(t, k)));
+    return `<tr class="clickable" data-act="editsalary" data-id="${esc(t.id)}"><td>${esc(dShort(t.date))}</td><td>${fmt(dget(t, "gross"))}</td><td>${ded ? fmt(ded) : "—"}</td><td><b>${fmt(t.amount)}</b></td></tr>`;
+  }).join("") || `<tr><td colspan="4" style="text-align:center;color:var(--muted);font-family:var(--f-body)">No paydays logged in these months.</td></tr>`;
 }
 function salaryRows(v, sal, months) {
   return sal.filter((t) => months.includes(ymOf(t.date))).reverse().map((t) => {
@@ -3035,7 +3057,7 @@ function salaryRows(v, sal, months) {
 }
 function tSalary(v) {
   const sal = v.txns.filter((t) => t.type === "income" && t.category === "Salary").sort((a, b) => a.date.localeCompare(b.date));
-  const other = v.txns.filter((t) => t.type === "income" && t.category !== "Salary" && t.date.startsWith(S.month));
+  const other = v.txns.filter((t) => isOtherIncome(t) && t.date.startsWith(S.month));
   const months = []; for (let k = 5; k >= 0; k--) months.push(shiftYM(S.month, -k));
   const byM = months.map((ym) => sal.filter((t) => t.date.startsWith(ym)));
   const yr = S.month.slice(0, 4);
@@ -3053,17 +3075,13 @@ function tSalary(v) {
     <div class="kpi"><span class="eyebrow">GSIS, Pag-IBIG &amp; PhilHealth</span><span class="v">${fmt(ytdGov)}</span><span class="s">Paid in ${esc(yr)}${ytdEq ? " · coop savings " + fmt(ytdEq) : ""}</span></div>
     <div class="kpi"><span class="eyebrow">Lost to tardy &amp; absences</span><span class="v ${lost ? "neg" : ""}">${fmt(lost)}</span><span class="s">${esc(yr)} so far</span></div>
   </section>
-  <div class="cols">
+  <div class="cols salcols">
     <div class="stack">
-      <section class="panel">
-        <div class="phead"><h2>Paydays</h2><div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn small primary" data-act="newsalary">Log payday</button><button type="button" class="btn small" data-act="newincome">Other income</button></div></div>
-        <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Payday</th><th>Gross</th><th>GSIS, HDMF, PHIC</th><th>Tax</th><th>Other ded.</th><th>Net</th></tr></thead><tbody>${salaryRows(v, sal, months)}</tbody></table></div>
-      </section>
-      <section class="panel">
+      <section class="panel s-inc">
         <div class="phead"><h2>Income by month</h2><div class="legend" style="margin:0"><span><i style="background:var(--sal)"></i>Salary</span><span><i style="background:var(--oth)"></i>Other income</span></div></div>
         ${(() => {
           const sv = byM.map((a) => r2(sum(a, (t) => +t.amount)));
-          const oT = months.map((ym) => v.txns.filter((t) => t.type === "income" && t.category !== "Salary" && t.date.startsWith(ym)));
+          const oT = months.map((ym) => v.txns.filter((t) => isOtherIncome(t) && t.date.startsWith(ym)));
           const ov = oT.map((a) => r2(sum(a, (t) => +t.amount)));
           const why = oT.map((a) => { const c = {}; a.forEach((t) => (c[t.category] = r2((c[t.category] || 0) + (+t.amount)))); return Object.keys(c).map((x) => x + " " + fmt(c[x])).join(", "); });
           const tNow = r2(sv[5] + ov[5]);
@@ -3073,14 +3091,18 @@ function tSalary(v) {
         })()}
         ${c ? `<p class="note">Your payslip says ${fmt(c.month)} a month. ${(() => { const m = byM[5]; const got = r2(sum(m, (t) => +t.amount)); return m.length === 2 ? (Math.abs(got - c.month) < 1 ? "This month's salary matched it." : `This month's salary was ${fmt(got)}, ${got < c.month ? fmt(r2(c.month - got)) + " less" : fmt(r2(got - c.month)) + " more"}.`) : ""; })()}</p>` : ""}
       </section>
-    </div>
-    <div class="stack">
-      ${payslipPanel(v)}
       ${bonusesPanel(v)}
-      <section class="panel">
+      <section class="panel s-oth">
         <div class="phead"><h2>Other income · ${esc(ymShort(S.month))}</h2></div>
         <div class="rows">${other.length ? other.map((t) => `<button type="button" class="row" data-act="editincome" data-id="${esc(t.id)}"><span class="bar6" style="background:var(--income)"></span><span style="min-width:0"><span class="t" style="display:block">${esc(t.category)}</span><span class="m" style="display:block">${esc([dShort(t.date), t.note].filter(Boolean).join(" · "))}</span></span><span class="r"><span class="amt">${fmt(t.amount)}</span></span></button>`).join("") : `<div class="empty"><strong>No other income this month</strong>Bonuses, side income and reimbursements go here.</div>`}</div>
       </section>
+    </div>
+    <div class="stack">
+      <section class="panel s-pay">
+        <div class="phead"><h2>Paydays</h2><div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn small primary" data-act="newsalary">Log payday</button><button type="button" class="btn small" data-act="newincome">Other income</button></div></div>
+        <div class="tbl-wrap"><table class="tbl compact"><thead><tr><th>Payday</th><th>Gross</th><th>Deductions</th><th>Net</th></tr></thead><tbody>${salaryRowsCompact(v, sal, months)}</tbody></table></div><p class="note" style="margin-top:6px">Tap a payday to see or change its breakdown.</p>
+      </section>
+      ${payslipPanel(v)}
     </div>
   </div>`;
 }
@@ -3289,7 +3311,7 @@ function tOverview(v) {
   const months = allMonths(v); const flows = months.map((m) => monthFlow(v, m)); const nM = months.length;
   const inc = r2(sum(flows, (f) => f.income)), out = r2(sum(flows, (f) => f.spent)), kept = r2(inc - out);
   const sal = months.map((ym) => r2(sum(v.txns.filter((t) => t.type === "income" && t.category === "Salary" && t.date.startsWith(ym)), (t) => +t.amount)));
-  const othT = months.map((ym) => v.txns.filter((t) => t.type === "income" && t.category !== "Salary" && t.date.startsWith(ym)));
+  const othT = months.map((ym) => v.txns.filter((t) => isOtherIncome(t) && t.date.startsWith(ym)));
   const oth = othT.map((a) => r2(sum(a, (t) => +t.amount)));
   const why = othT.map((a) => { const c = {}; a.forEach((t) => (c[t.category] = r2((c[t.category] || 0) + (+t.amount)))); return Object.keys(c).map((x) => x + " " + fmt(c[x])).join(", "); });
   const lbl = months.map((m, i) => (nM > 12 && (i === 0 || m.endsWith("-01")) ? ymShort(m) + " '" + m.slice(2, 4) : ymShort(m)));
